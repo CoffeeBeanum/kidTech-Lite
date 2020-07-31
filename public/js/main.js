@@ -1,10 +1,11 @@
-let client = io();
+import { SEND_RATE, regexp } from "./constants.js";
+import { context, contextBG, canvasBG, canvas, chatSound, serverSound, client } from './startSettings.js'
 
 // System lets
-let sendRate = 20;
 
 let frameStart;
 let frameEnd;
+let lastMessageId = 0;
 
 let currentTime;
 let deltaTime;
@@ -15,38 +16,13 @@ let timeoutTime = 5000;
 let deltaDifference;
 
 //Sound
-let chatSound = new Audio('resources/sounds/chat_message.wav');
-let serverSound = new Audio('resources/sounds/server_message.wav');
 
-chatSound.volume = 0.2;
-serverSound.volume = 0.2;
 
-// Background
-let canvasBG = document.getElementById("backgroundCanvas");
-let contextBG = canvasBG.getContext("2d");
-canvasBG.style.cursor = "default";
-contextBG.canvas.width = window.innerWidth;
-contextBG.canvas.height = window.innerHeight;
-contextBG.imageSmoothingEnabled = false;
-
-// Canvas
-let canvas = document.getElementById("mainCanvas");
-let context = canvas.getContext("2d");
-canvas.style.cursor = "default";
-context.canvas.width = window.innerWidth;
-context.canvas.height = window.innerHeight;
-context.imageSmoothingEnabled = false;
-
-function setSkinImg () {
+function setSkinImg() {
     let index = parseInt($("#skinList").val());
-    let side = 0;
-    if (spriteNames[index].length > 1) {
-        side = Math.floor(spriteNames[index].length / 2) - 1;
-    }
+    let side = (spriteNames[index].length > 1) ? Math.floor(spriteNames[index].length / 2) - 1 : 0;
     $('#skinImage').attr("src", spriteNames[index][side]);
-    let sidesString = "";
-    if (spriteNames[index].length > 1) sidesString = "This skin has " + spriteNames[index].length + " sides.";
-    else sidesString = "This skin has 1 side.";
+    let sidesString = (spriteNames[index].length > 1) ? `This skin has ${spriteNames[index].length} sides.` : "This skin has 1 side."
     $('#skinSides').html(sidesString);
 }
 setSkinImg();
@@ -62,12 +38,8 @@ $('#qualitySlider').change(function () {
     scanLineStep = 2 / (context.canvas.width / res);
 });
 
-// Regexp
-let boldRegexp = /(\*{2}(.*?)\*{2})/gm;
-let italicsRegexp = /(\*(.*?)\*)/gm;
-let devilRegexp = /(_(.*?)_)/gm;
 
-let messageId = [];
+let messagesId = [];
 let maxMessages = 50;
 
 let gameState = -1;
@@ -306,7 +278,7 @@ function performRaycast(ray, x, onScreenX, layer) {
             }
             if (!excludedHit) {
                 if (world[ray.y][ray.x] === 10) {
-                    let portal = portals.filter(function( a ) {
+                    let portal = portals.filter(function (a) {
                         return (a[0].x === ray.x && a[0].y === ray.y);
                     });
                     if (portal.length > 0) {
@@ -357,14 +329,14 @@ function rayHit(ray, x, onScreenX) {
         if (ray.side === 0) perpWallDist = (ray.coordJumps[0].x - thisPlayer.x + (1 - ray.stepX) / 2) / ray.dirX;
         else perpWallDist = (ray.coordJumps[0].y - thisPlayer.y + (1 - ray.stepY) / 2) / ray.dirY;
 
-        for (let i = 1; i < jumps-1; i++) {
-            if (ray.side === 0) perpWallDist += (ray.coordJumps[i+1].x - ray.coordJumps[i].x - modifierX + (1 - ray.stepX) / 2) / ray.dirX;
-            else perpWallDist += (ray.coordJumps[i+1].y - ray.coordJumps[i].y - modifierY + (1 - ray.stepY) / 2) / ray.dirY;
+        for (let i = 1; i < jumps - 1; i++) {
+            if (ray.side === 0) perpWallDist += (ray.coordJumps[i + 1].x - ray.coordJumps[i].x - modifierX + (1 - ray.stepX) / 2) / ray.dirX;
+            else perpWallDist += (ray.coordJumps[i + 1].y - ray.coordJumps[i].y - modifierY + (1 - ray.stepY) / 2) / ray.dirY;
             i++;
         }
 
-        if (ray.side === 0) perpWallDist += (ray.x - ray.coordJumps[jumps-1].x - modifierX + (1 - ray.stepX) / 2) / ray.dirX;
-        else perpWallDist += (ray.y - ray.coordJumps[jumps-1].y - modifierY + (1 - ray.stepY) / 2) / ray.dirY;
+        if (ray.side === 0) perpWallDist += (ray.x - ray.coordJumps[jumps - 1].x - modifierX + (1 - ray.stepX) / 2) / ray.dirX;
+        else perpWallDist += (ray.y - ray.coordJumps[jumps - 1].y - modifierY + (1 - ray.stepY) / 2) / ray.dirY;
     }
 
     // Calculate height of line to draw on screen
@@ -477,6 +449,7 @@ function drawObject(object) {
     }
 }
 
+// FIXME: REALLY 
 function drawMiniMap() {
     context.font = '8pt Oswald';
     context.textAlign = 'left';
@@ -666,7 +639,7 @@ function updatePlayerPosition(deltaTime) {
     thisPlayer.speedY /= friction;
 
     if (world[Math.floor(thisPlayer.y)][Math.floor(thisPlayer.x)] === 10) {
-        let portal = portals.filter(function( a ) {
+        let portal = portals.filter(function (a) {
             return (a[0].x === Math.floor(thisPlayer.x) && a[0].y === Math.floor(thisPlayer.y));
         });
         if (portal.length > 0) {
@@ -782,23 +755,19 @@ client.on('world data', function (worldData) {
         thisPlayer.y += worldData.reSync.y;
     }
 });
-
+// TODO: TRY TO MAKE CLASS WITH LIMITS FOR IMG
 client.on('server message', function (msg) {
-    let id = 0;
-    if (messageId.length > 0) {
-        id = messageId[messageId.length - 1] + 1;
-    }
-    messageId.push(id);
-    if (messageId.length > maxMessages) {
-        $('#chat' + messageId[0]).remove();
-        messageId.shift();
+    messagesId.push(lastMessageId);
+    if (messagesId.length > maxMessages) {
+        $('#chat' + messagesId[0]).remove();
+        messagesId.shift();
     }
 
     let output;
 
     if (msg.type === 0) {
         msg.text = parseModifiers(msg.text);
-        output = "<span id='chat" + id + "'><span style='color: #c3c3c3;'>" + msg.name + ": </span>" + msg.text + "<br></span>";
+        output = "<span id='chat" + lastMessageId + "'><span style='color: #c3c3c3;'>" + msg.name + ": </span>" + msg.text + "<br></span>";
         $('#chatOutput').append(output);
         playChatSound(msg);
     } else if (msg.type === 1) {
@@ -813,67 +782,29 @@ client.on('server message', function (msg) {
                     height = 300;
                     width = temp.width / temp.height * height;
                 }
-                output = "<span id='chat" + id + "'><span style='color: #c3c3c3;'>" + msg.name + ": </span><img src='" + msg.text + "' width='" + width + "'><br></span>";
+                output = "<span id='chat" + lastMessageId + "'><span style='color: #c3c3c3;'>" + msg.name + ": </span><img src='" + msg.text + "' width='" + width + "'><br></span>";
                 $('#chatOutput').append(output);
                 playChatSound(msg);
             }
         };
     }
+    lastMessageId ++;
+
 });
-
 function parseModifiers(string) {
-    string = findBold(string);
-    string = findItalics(string);
-    string = findDevil(string);
-    return string;
-}
-
-function findBold(string) {
-    let match = boldRegexp.exec(string);
-    boldRegexp.lastIndex = 0;
-    while (match != null) {
-        string = string.replace(match[1], "<b>" + match[2] + "</b>");
-        match = boldRegexp.exec(string);
-        boldRegexp.lastIndex = 0;
-    }
-    return string;
-}
-
-function findItalics(string) {
-    let match = italicsRegexp.exec(string);
-    italicsRegexp.lastIndex = 0;
-    while (match != null) {
-        string = string.replace(match[1], "<i>" + match[2] + "</i>");
-        match = italicsRegexp.exec(string);
-        italicsRegexp.lastIndex = 0;
-    }
-    return string;
-}
-
-function findDevil(string) {
-    let match = devilRegexp.exec(string);
-    devilRegexp.lastIndex = 0;
-    while (match != null) {
-        string = string.replace(match[1], "<span style='color:red; font-size: xx-large; letter-spacing: 5px;'>" + match[2] + "</span>");
-        match = devilRegexp.exec(string);
-        devilRegexp.lastIndex = 0;
-    }
+    string = string.replace(regexp.BOLD_REGEXP, "<b>$1</b>")
+    string = string.replace(regexp.ITALICS_REGEXP, "<i>$1</i>")
+    string = string.replace(regexp.DEVIL_REGEXP, "<span style='color:red; font-size: xx-large; letter-spacing: 5px;'>$1</span>")
     return string;
 }
 
 function playChatSound(msg) {
-    if (msg.name === '<i>server</i>') {
-        serverSound.play();
-    } else {
-        chatSound.play();
-    }
+    msg.name === '<i>server</i>' ? serverSound.play() : chatSound.play();
 }
-
+// TODO: TRY TO DO WITH EVENT EMITTERS
 function updateThisPlayer() {
-    let found = localServerData.playerList.find(function (a) {
-        return a.id === thisPlayer.id;
-    });
-
+    let found = localServerData.playerList.find(a => (a.id === thisPlayer.id));
+    
     thisPlayer.admin = found.admin;
 }
 
@@ -950,4 +881,4 @@ requestAnimationFrame(drawingLoop);
 
 window.setInterval(function () {
     sendData();
-}, sendRate);
+}, SEND_RATE);
