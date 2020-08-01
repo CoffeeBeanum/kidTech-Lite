@@ -1,75 +1,35 @@
-import { SEND_RATE, regexp } from "./constants.js";
-import { context, contextBG, canvasBG, canvas, chatSound, serverSound, client } from './startSettings.js'
+import { context, canvas, debugSound, fpsLabel } from './startSettings.js'
 
 // System lets
-
 let frameStart;
 let frameEnd;
-let lastMessageId = 0;
 
 let currentTime;
 let deltaTime;
 let lastTime = Date.now();
-let lastDataTime;
-let timeoutTime = 5000;
 
-let deltaDifference;
-
-//Sound
-
-
-function setSkinImg() {
-    let index = parseInt($("#skinList").val());
-    let side = (spriteNames[index].length > 1) ? Math.floor(spriteNames[index].length / 2) - 1 : 0;
-    $('#skinImage').attr("src", spriteNames[index][side]);
-    let sidesString = (spriteNames[index].length > 1) ? `This skin has ${spriteNames[index].length} sides.` : "This skin has 1 side."
-    $('#skinSides').html(sidesString);
-}
-setSkinImg();
-
-// Skin selector
-$('#skinList').change(function () {
-    setSkinImg()
-});
-
-// Quality slider
-$('#qualitySlider').change(function () {
-    res = Math.floor($(this).val()) * 2;
-    scanLineStep = 2 / (context.canvas.width / res);
-});
-
-
-let messagesId = [];
-let maxMessages = 50;
-
-let gameState = -1;
+let gameState = 1;
 
 let editMode = false;
 let editPoint = new Point(0, 0);
 let editBlock = -1;
 
-// Local server data
-let localServerData = {
-    'playerList': [],
-    'deltaTime': 0
-};
-
-let spawn;
 let world = [];
 let objects = [];
-let portals
+let portals = [];
+
+// Preset default world
+world = [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,3,3,1,1,1,1,1,1,1],[1,9,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,8,0,0,0,0,0,0,0,0,2,0,2,0,0,0,4,0,0,6,1,4,4,4,4,4,1],[1,7,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,6,0,0,0,0,0,0,0,0,0,9,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,1,1,1,4,1,1,1],[1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,3,1,0,0,0,1],[1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,0,0,9,0,2,1,1],[1,1,0,0,0,0,2,0,0,5,0,0,0,0,0,0,1,3,3,3,3,1,0,0,0,1],[1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,2,1,1,1,1,1,1,4,1,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,1,2,2,2,2,1,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,2,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,2,1,1,1,1,1,1,1,1,1,1,1,1,1],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,0,2],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,5,7],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,0,3],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,2,0,0,0,0,0,0,0,0,0,0,3],[null,null,1,1,1,2,4,2,1,1,1,1,4,1,1,1,1,null,10,0,0,0,0,0,0,0,0,0,5,9],[null,null,null,null,null,1,0,1,null,null,null,1,0,1,null,null,null,null,2,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,4,1,null,1,1,1,4,1,1,1,null,null,1,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,0,1,null,10,0,0,0,0,0,10,null,null,1,0,0,0,0,0,0,0,0,0,5,7],[null,null,null,null,null,1,4,1,null,1,1,1,1,1,1,1,null,null,1,0,0,0,0,0,0,0,0,0,0,2],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1,1,1,1,1,1,1,1,1,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,1,1,2,4,2,1,1,1,1,1,1,1,1,1,1,1,0,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,1,1,1,1,1,1,1,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,7],[null,null,null,1,0,0,0,0,0,5,0,0,0,8],[null,null,null,1,0,0,0,0,0,4,0,0,0,1],[null,null,null,1,1,1,1,1,1,1,1,1,1,1]];
+objects = [{"name":"Cat","x":6.5,"y":11.5,"rotation":0,"type":5,"solid":0,"distance":0,"relativeAngle":0},{"name":"Blood ghoul","x":6.5,"y":12.5,"rotation":0,"type":4,"solid":0,"distance":0,"relativeAngle":0},{"name":"The Shpee","x":6.5,"y":13.5,"rotation":0,"type":3,"solid":0,"distance":0,"relativeAngle":0},{"name":"Orman Ablo","x":6.5,"y":14.5,"rotation":0,"type":2,"solid":0,"distance":0,"relativeAngle":0},{"name":"Nazi dude","x":6.5,"y":15.5,"rotation":0,"type":1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Doom boi","x":6.5,"y":16.5,"rotation":0,"type":0,"solid":0,"distance":0,"relativeAngle":0},{"name":"Hi there!","x":18,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Welcome to Raycaster alpha!","x":19,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Have fun!","x":20,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"THE LAG ROOM","x":23.5,"y":9.3,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Sneaky engie","x":21.5,"y":5.5,"rotation":315,"type":6,"solid":0,"distance":0,"relativeAngle":0},{"name":"Portal experiment","x":18,"y":24.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0}];
+portals = [[{"x":20,"y":24},{"x":19,"y":34}],[{"x":18,"y":34},{"x":19,"y":24}],[{"x":9,"y":37},{"x":14,"y":37}],[{"x":15,"y":37},{"x":10,"y":37}]];
 
 // Player object
 function Player() {
-    this.id = '';
-    this.name = '';
-    this.skin = 0;
-    this.x = 0;
-    this.y = 0;
-    this.rotation = 240;
+    this.x = 19;
+    this.y = 20;
+    this.rotation = 260;
     this.speedX = 0;
     this.speedY = 0;
-    this.admin = 0;
 }
 
 let thisPlayer = new Player();
@@ -124,7 +84,7 @@ function KeyState() {
 
 let currentKeyState = new KeyState();
 
-// -Drawing lets-
+// Drawing lets
 function Point(x, y) {
     this.x = x;
     this.y = y;
@@ -134,39 +94,39 @@ let pipeline;
 
 let maxTransparency = 10;
 
-let res = 6;
+let resolution = 6;
 
 let drawDistance = 50;
 
-let scanLineStep = 2 / (context.canvas.width / res);
+let scanLineStep = 2 / (context.canvas.width / resolution);
 
 let horizon = canvas.height / 2;
 
 let excludedBlocks = [];
 
-// -Drawing funcs-
+// Drawing funcs
 function drawBackground() {
-    let gradient = contextBG.createRadialGradient(canvasBG.width / 2, horizon - canvasBG.height * 3, canvasBG.height * 1.5, canvasBG.width / 2, horizon - canvasBG.height * 3, canvasBG.height * 3);
+    let gradient = context.createRadialGradient(canvas.width / 2, horizon - canvas.height * 3, canvas.height * 1.5, canvas.width / 2, horizon - canvas.height * 3, canvas.height * 3);
     gradient.addColorStop(0, '#9b9595');
     gradient.addColorStop(1, '#696467');
-    contextBG.fillStyle = gradient;
-    contextBG.fillRect(0, 0, canvasBG.width, horizon);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, horizon);
 
-    gradient = contextBG.createRadialGradient(canvasBG.width / 2, horizon + canvasBG.height * 3, canvasBG.height * 1.5, canvasBG.width / 2, horizon + canvasBG.height * 3, canvasBG.height * 3);
+    gradient = context.createRadialGradient(canvas.width / 2, horizon + canvas.height * 3, canvas.height * 1.5, canvas.width / 2, horizon + canvas.height * 3, canvas.height * 3);
     gradient.addColorStop(0, '#887c7f');
     gradient.addColorStop(1, '#6b6061');
-    contextBG.fillStyle = gradient;
-    contextBG.fillRect(0, horizon, canvasBG.width, canvasBG.height - horizon);
+    context.fillStyle = gradient;
+    context.fillRect(0, horizon, canvas.width, canvas.height - horizon);
 }
 
 function updateFrame() {
     let onScreenX = 0.5;
 
-    if (res % 2 === 0) {
+    if (resolution % 2 === 0) {
         onScreenX = 0;
     }
 
-    context.lineWidth = res;
+    context.lineWidth = resolution;
 
     pipeline = [];
 
@@ -174,7 +134,7 @@ function updateFrame() {
         calculateScanLine(Math.sin(x) * 180 / Math.PI, onScreenX);
 
         x += scanLineStep;
-        onScreenX += res;
+        onScreenX += resolution;
     }
 
     for (let i = 0; i < objects.length; i++) {
@@ -193,28 +153,28 @@ function updateFrame() {
         }
     }
 
-    for (let i = 0; i < localServerData.playerList.length; i++) {
-        if (localServerData.playerList[i].id !== thisPlayer.id) {
-            let object = new GameObject(
-                localServerData.playerList[i].name,
-                localServerData.playerList[i].x,
-                localServerData.playerList[i].y,
-                localServerData.playerList[i].rotation,
-                localServerData.playerList[i].skin, false);
-            let relativeAngle = Math.atan2(object.y - thisPlayer.y, object.x - thisPlayer.x) * 180 / Math.PI - thisPlayer.rotation;
-            if (relativeAngle <= -360) relativeAngle += 360;
-            relativeAngle *= -1;
+    // for (let i = 0; i < localServerData.playerList.length; i++) {
+    //     if (localServerData.playerList[i].id !== thisPlayer.id) {
+    //         let object = new GameObject(
+    //             localServerData.playerList[i].name,
+    //             localServerData.playerList[i].x,
+    //             localServerData.playerList[i].y,
+    //             localServerData.playerList[i].rotation,
+    //             localServerData.playerList[i].skin, false);
+    //         let relativeAngle = Math.atan2(object.y - thisPlayer.y, object.x - thisPlayer.x) * 180 / Math.PI - thisPlayer.rotation;
+    //         if (relativeAngle <= -360) relativeAngle += 360;
+    //         relativeAngle *= -1;
 
-            if ((relativeAngle >= 0 && relativeAngle <= 90) || (relativeAngle >= 270 && relativeAngle <= 360) ||
-                (relativeAngle <= 0 && relativeAngle >= -90) || (relativeAngle <= -270 && relativeAngle >= -360)) {
+    //         if ((relativeAngle >= 0 && relativeAngle <= 90) || (relativeAngle >= 270 && relativeAngle <= 360) ||
+    //             (relativeAngle <= 0 && relativeAngle >= -90) || (relativeAngle <= -270 && relativeAngle >= -360)) {
 
-                object.relativeAngle = relativeAngle;
-                object.distance = Math.abs(Math.sqrt(Math.pow(object.x - thisPlayer.x, 2) + Math.pow(object.y - thisPlayer.y, 2)));
+    //             object.relativeAngle = relativeAngle;
+    //             object.distance = Math.abs(Math.sqrt(Math.pow(object.x - thisPlayer.x, 2) + Math.pow(object.y - thisPlayer.y, 2)));
 
-                pipeline.push(object);
-            }
-        }
-    }
+    //             pipeline.push(object);
+    //         }
+    //     }
+    // }
 }
 
 function calculateRayDirection(ray) {
@@ -358,8 +318,6 @@ function rayHit(ray, x, onScreenX) {
 }
 
 function drawFrame() {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
     pipeline.sort(function (a, b) {
         return b.distance - a.distance;
     });
@@ -375,14 +333,14 @@ function drawScanLine(ray) {
 
     let texture = getWallTexture(ray.texture);
 
-    context.drawImage(texture, Math.floor(ray.textureX * texture.width), 0, 1, texture.height, Math.floor(ray.onScreenX), horizon - ray.onScreenSize, res, ray.onScreenSize * 2);
+    context.drawImage(texture, Math.floor(ray.textureX * texture.width), 0, 1, texture.height, Math.floor(ray.onScreenX), horizon - ray.onScreenSize, resolution, ray.onScreenSize * 2);
 
     // Apply side tint
     if (ray.side === 0 && !transparentBlocks.includes(ray.texture)) {
         context.strokeStyle = 'rgba(0, 0, 0, 0.4)';
         context.beginPath();
-        context.moveTo(ray.onScreenX + res / 2, Math.round(horizon - ray.onScreenSize));
-        context.lineTo(ray.onScreenX + res / 2, Math.round(horizon + ray.onScreenSize));
+        context.moveTo(ray.onScreenX + resolution / 2, Math.round(horizon - ray.onScreenSize));
+        context.lineTo(ray.onScreenX + resolution / 2, Math.round(horizon + ray.onScreenSize));
         context.stroke();
     }
 
@@ -390,8 +348,8 @@ function drawScanLine(ray) {
     if (ray.distance > 5) {
         context.strokeStyle = 'rgba(0, 0, 0, ' + (ray.distance - 5) / drawDistance + ')';
         context.beginPath();
-        context.moveTo(ray.onScreenX + res / 2, Math.round(horizon - ray.onScreenSize));
-        context.lineTo(ray.onScreenX + res / 2, Math.round(horizon + ray.onScreenSize));
+        context.moveTo(ray.onScreenX + resolution / 2, Math.round(horizon - ray.onScreenSize));
+        context.lineTo(ray.onScreenX + resolution / 2, Math.round(horizon + ray.onScreenSize));
         context.stroke();
     }
 }
@@ -495,56 +453,40 @@ function drawMiniMap() {
         }
     }
 
-    // Draw players fov
+    // Draw player fov
     context.globalAlpha = 0.5;
 
     let fov = 90;
 
-    for (let i = 0; i < localServerData.playerList.length; i++) {
-        let player = localServerData.playerList[i];
-        if (player.id === thisPlayer.id) {
-            player = thisPlayer;
-            context.fillStyle = 'darkgrey';
-        } else {
-            context.fillStyle = 'red';
-        }
+    context.fillStyle = 'darkgrey';
 
-        let cos = Math.cos((player.rotation - fov / 2) * (Math.PI / 180));
-        let sin = Math.sin((player.rotation - fov / 2) * (Math.PI / 180));
+    let cos = Math.cos((thisPlayer.rotation - fov / 2) * (Math.PI / 180));
+    let sin = Math.sin((thisPlayer.rotation - fov / 2) * (Math.PI / 180));
 
-        context.beginPath();
-        context.moveTo(offset + player.x * cellSize, offset + player.y * cellSize);
-        context.lineTo(offset + (player.x + cos) * cellSize, offset + (player.y + sin) * cellSize);
+    context.beginPath();
+    context.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
+    context.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
 
-        context.arc(offset + player.x * cellSize, offset + player.y * cellSize, playerFovSize, (player.rotation - fov / 2) * (Math.PI / 180), (player.rotation + fov / 2) * (Math.PI / 180), false);
+    context.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerFovSize, (thisPlayer.rotation - fov / 2) * (Math.PI / 180), (thisPlayer.rotation + fov / 2) * (Math.PI / 180), false);
 
-        cos = Math.cos((player.rotation + fov / 2) * (Math.PI / 180));
-        sin = Math.sin((player.rotation + fov / 2) * (Math.PI / 180));
-        context.moveTo(offset + player.x * cellSize, offset + player.y * cellSize);
-        context.lineTo(offset + (player.x + cos) * cellSize, offset + (player.y + sin) * cellSize);
-        context.lineTo(offset + (player.x + cos) * cellSize, offset + (player.y + sin) * cellSize);
+    cos = Math.cos((thisPlayer.rotation + fov / 2) * (Math.PI / 180));
+    sin = Math.sin((thisPlayer.rotation + fov / 2) * (Math.PI / 180));
+    context.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
+    context.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
+    context.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
 
-        context.fill();
-        context.closePath();
-    }
+    context.fill();
+    context.closePath();
 
     context.globalAlpha = 1;
 
-    // Draw players
-    for (let i = 0; i < localServerData.playerList.length; i++) {
-        let player = localServerData.playerList[i];
-        if (player.id === thisPlayer.id) {
-            player = thisPlayer;
-            context.fillStyle = 'grey';
-        } else {
-            context.fillStyle = 'darkred';
-        }
+    // Draw thisPlayer
+    context.fillStyle = 'grey';
 
-        context.beginPath();
-        context.arc(offset + player.x * cellSize, offset + player.y * cellSize, playerSize, 0, Math.PI * 2, true);
-        context.fill();
-        context.closePath();
-    }
+    context.beginPath();
+    context.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerSize, 0, Math.PI * 2, true);
+    context.fill();
+    context.closePath();
 
     context.textAlign = 'left';
     context.fillStyle = 'lightgrey';
@@ -569,21 +511,20 @@ function drawMiniMap() {
 }
 
 function drawScene() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
     drawBackground();
     drawFrame();
     drawMiniMap();
-
-    if (currentTime - lastDataTime > 5000) $('#connectionState').css('visibility', 'visible');
-    else $('#connectionState').css('visibility', 'hidden');
 }
 
-// -Physics lets-
+// Physics lets
 let acceleration = 0.0006;
 let friction = 1.1;
 
 let playerSize = 0.3;
 
-// -Physics funcs-
+// Physics funcs
 function updatePlayerState() {
     if (currentKeyState.w) {
         thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * (Math.PI / 180));
@@ -687,7 +628,7 @@ function cameraMove(e) {
 }
 
 // Update keystates on keydown
-$(document).on('keydown', function (e) {
+document.addEventListener('keydown', e => {
     if (e.target.tagName.toLowerCase() !== 'input' && gameState > 0) {
         if (e.keyCode === 87) currentKeyState.w = true;
         if (e.keyCode === 83) currentKeyState.s = true;
@@ -707,7 +648,7 @@ $(document).on('keydown', function (e) {
 });
 
 // Update keystates on keyup
-$(document).on('keyup', function (e) {
+window.addEventListener('keyup', e => {
     if (e.keyCode === 87) currentKeyState.w = false;
     if (e.keyCode === 83) currentKeyState.s = false;
     if (e.keyCode === 65) currentKeyState.a = false;
@@ -715,152 +656,24 @@ $(document).on('keyup', function (e) {
 });
 
 // Recalculate canvas size on window resize
-$(window).on('resize', function () {
-    contextBG.canvas.width = window.innerWidth;
-    contextBG.canvas.height = window.innerHeight;
+window.onresize = function() {
     context.canvas.width = window.innerWidth;
     context.canvas.height = window.innerHeight;
-    scanLineStep = 2 / (context.canvas.width / res);
+    scanLineStep = 2 / (context.canvas.width / resolution);
     context.imageSmoothingEnabled = false;
     horizon = window.innerHeight / 2;
-});
-
-// Server messages
-client.on('connect', function () {
-    thisPlayer.id = client.io.engine.id;
-});
-
-client.on('server data', function (serverData) {
-    localServerData = serverData;
-    lastDataTime = Date.now();
-
-    updateThisPlayer();
-});
-
-client.on('world data', function (worldData) {
-    world = worldData.world;
-    objects = worldData.objects;
-    spawn = worldData.spawn;
-    portals = worldData.portals;
-    if (gameState === -1) {
-        thisPlayer.x = spawn.x;
-        thisPlayer.y = spawn.y;
-        thisPlayer.rotation = spawn.rotation;
-        gameState = 0;
-    }
-    if (worldData.reSync.x > 0) {
-        thisPlayer.x += worldData.reSync.x;
-    }
-    if (worldData.reSync.y > 0) {
-        thisPlayer.y += worldData.reSync.y;
-    }
-});
-// TODO: TRY TO MAKE CLASS WITH LIMITS FOR IMG
-client.on('server message', function (msg) {
-    messagesId.push(lastMessageId);
-    if (messagesId.length > maxMessages) {
-        $('#chat' + messagesId[0]).remove();
-        messagesId.shift();
-    }
-
-    let output;
-
-    if (msg.type === 0) {
-        msg.text = parseModifiers(msg.text);
-        output = "<span id='chat" + lastMessageId + "'><span style='color: #c3c3c3;'>" + msg.name + ": </span>" + msg.text + "<br></span>";
-        $('#chatOutput').append(output);
-        playChatSound(msg);
-    } else if (msg.type === 1) {
-        let temp = new Image();
-        temp.src = msg.text;
-        temp.onload = function () {
-            if (temp.width > 0) {
-                let width = temp.width;
-                if (width > 300) width = 300;
-                let height = temp.height / temp.width * width;
-                if (height > 300) {
-                    height = 300;
-                    width = temp.width / temp.height * height;
-                }
-                output = "<span id='chat" + lastMessageId + "'><span style='color: #c3c3c3;'>" + msg.name + ": </span><img src='" + msg.text + "' width='" + width + "'><br></span>";
-                $('#chatOutput').append(output);
-                playChatSound(msg);
-            }
-        };
-    }
-    lastMessageId ++;
-
-});
-function parseModifiers(string) {
-    string = string.replace(regexp.BOLD_REGEXP, "<b>$1</b>")
-    string = string.replace(regexp.ITALICS_REGEXP, "<i>$1</i>")
-    string = string.replace(regexp.DEVIL_REGEXP, "<span style='color:red; font-size: xx-large; letter-spacing: 5px;'>$1</span>")
-    return string;
 }
 
-function playChatSound(msg) {
-    msg.name === '<i>server</i>' ? serverSound.play() : chatSound.play();
-}
-// TODO: TRY TO DO WITH EVENT EMITTERS
-function updateThisPlayer() {
-    let found = localServerData.playerList.find(a => (a.id === thisPlayer.id));
-    
-    thisPlayer.admin = found.admin;
+function updateFps() {
+    fpsLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>Frametime: ${(frameEnd - frameStart).toFixed(2)}ms`;
 }
 
-function sendData() {
-    client.emit('client data', thisPlayer);
-}
-
-function beginGame() {
-    sendData();
-    client.emit('player joined');
-    gameState = 1;
-}
-
-//Pre-game functions
-$('#loginForm').submit(function () {
-    let name = $('#nickField').val();
-    let skin = $('#skinList').val();
-    if (name !== '' && name.length <= 15) {
-        thisPlayer.name = name;
-        thisPlayer.skin = skin;
-        $('#loginCard').hide();
-        $('#modifiersCard').hide();
-        $('#skinCard').hide();
-        $('#mainCanvas').css('display', 'block');
-        $('#chatForm').css('display', 'block');
-        beginGame();
-    }
-    return false;
-});
-
-$('#chatForm').submit(function () {
-    let chatBox = $('#chatBox');
-    let msg = chatBox.val();
-    if (msg !== '' && msg.length <= 300) {
-        chatBox.val('');
-        client.emit('client message', msg);
-    }
-    return false;
-});
-
-function drawFps() {
-    context.textAlign = "right";
-    context.fillStyle = 'lightgrey';
-    context.fillText(
-        'frame time: ' + (frameEnd - frameStart) + 'ms',
-        canvas.width - 10, 45
-    );
-}
-
-function drawingLoop() {
-    currentTime = Date.now();
+function renderLoop() {
+    currentTime = performance.now();
     deltaTime = currentTime - lastTime;
     lastTime = currentTime;
-    deltaDifference = deltaTime / localServerData.deltaTime;
 
-    frameStart = Date.now();
+    frameStart = performance.now();
 
     if (gameState >= 0) {
         updatePlayerPosition(deltaTime);
@@ -870,15 +683,11 @@ function drawingLoop() {
         drawScene();
     }
 
-    frameEnd = Date.now();
+    frameEnd = performance.now();
 
-    drawFps();
+    updateFps();
 
-    requestAnimationFrame(drawingLoop);
+    requestAnimationFrame(renderLoop);
 }
 
-requestAnimationFrame(drawingLoop);
-
-window.setInterval(function () {
-    sendData();
-}, SEND_RATE);
+requestAnimationFrame(renderLoop);

@@ -84,9 +84,7 @@ for (let i = 0; i < textureNames.length; i++) {
 }
 
 function getWallTexture(type) {
-    if (type > textures.length-1) {
-        type = 0;
-    }
+    if (type > textures.length - 1) { type = 0; }
     return textures[type];
 }
 
@@ -105,8 +103,6 @@ for (let i = 0; i < spriteNames.length; i++) {
 }
 
 function getSprite(type) {
-    if (type > sprites.length) {
-        type = 0;
-    }
+    if (type > sprites.length) { type = 0; a}
     return sprites[type];
 }

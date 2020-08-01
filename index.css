@@ -1,0 +1,27 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body, html {
+    height: 100%;
+    font-family: 'Oswald', sans-serif;
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.debug-label {
+    margin-bottom: 10px;
+}
+
+#debug-label-container {
+    position: absolute;
+    right: 0;
+    top: 0;
+    padding: 10px;
+    color: whitesmoke;
+}

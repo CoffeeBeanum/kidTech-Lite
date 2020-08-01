@@ -1,0 +1,1 @@
+export const DEBUG_SOUND = 'resources/sounds/server_message.wav'
