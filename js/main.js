@@ -1,4 +1,4 @@
-import { context, canvas, debugSound, fpsLabel } from './startSettings.js'
+import { context, canvas, debugSound, fpsLabel, finalContext, finalCanvas } from './startSettings.js'
 
 // System lets
 let frameStart;
@@ -94,17 +94,29 @@ let pipeline;
 
 let maxTransparency = 10;
 
-let resolution = 6;
-
 let drawDistance = 50;
 
-let scanLineStep = 2 / (context.canvas.width / resolution);
-
+canvas.height = canvas.width * finalCanvas.width / finalCanvas.height;
 let horizon = canvas.height / 2;
 
 let excludedBlocks = [];
 
 // Drawing funcs
+function drawScene() {
+
+    canvas.height = canvas.width * finalCanvas.width / finalCanvas.height;
+    context.imageSmoothingEnabled = false;
+
+    updateFrame();
+
+    drawBackground();
+    drawFrame();
+
+    finalContext.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
+    
+    drawMiniMap();
+}
+
 function drawBackground() {
     let gradient = context.createRadialGradient(canvas.width / 2, horizon - canvas.height * 3, canvas.height * 1.5, canvas.width / 2, horizon - canvas.height * 3, canvas.height * 3);
     gradient.addColorStop(0, '#9b9595');
@@ -120,23 +132,21 @@ function drawBackground() {
 }
 
 function updateFrame() {
-    let onScreenX = 0.5;
-
-    if (resolution % 2 === 0) {
-        onScreenX = 0;
-    }
-
-    context.lineWidth = resolution;
-
     pipeline = [];
 
-    for (let x = -1; x <= 1;) {
-        calculateScanLine(Math.sin(x) * 180 / Math.PI, onScreenX);
+    // Prepare all rays
+    for (let onScreenX = 0; onScreenX < canvas.width; onScreenX++) {
+        // let relativeRayAngle = Math.sin(x) * 180 / Math.PI;
+        let relativeRayAngle = Math.atan((onScreenX - canvas.width / 2) / 100) * 180 / Math.PI;
 
-        x += scanLineStep;
-        onScreenX += resolution;
+        calculateScanLine(relativeRayAngle, onScreenX);
+        // calculateScanLine(relativeRayAngle, x);
+
+        // x += scanLineStep;
+        // onScreenX += resolution;
     }
 
+    // Prepare all objects
     for (let i = 0; i < objects.length; i++) {
         let object = objects[i];
         let relativeAngle = Math.atan2(object.y - thisPlayer.y, object.x - thisPlayer.x) * 180 / Math.PI - thisPlayer.rotation;
@@ -152,29 +162,22 @@ function updateFrame() {
             pipeline.push(object);
         }
     }
+}
 
-    // for (let i = 0; i < localServerData.playerList.length; i++) {
-    //     if (localServerData.playerList[i].id !== thisPlayer.id) {
-    //         let object = new GameObject(
-    //             localServerData.playerList[i].name,
-    //             localServerData.playerList[i].x,
-    //             localServerData.playerList[i].y,
-    //             localServerData.playerList[i].rotation,
-    //             localServerData.playerList[i].skin, false);
-    //         let relativeAngle = Math.atan2(object.y - thisPlayer.y, object.x - thisPlayer.x) * 180 / Math.PI - thisPlayer.rotation;
-    //         if (relativeAngle <= -360) relativeAngle += 360;
-    //         relativeAngle *= -1;
+function calculateScanLine(x, onScreenX) {
+    // Create ray, calculate it's position and direction
+    let ray = new Ray(
+        Math.floor(thisPlayer.x),
+        Math.floor(thisPlayer.y),
+        Math.cos((thisPlayer.rotation + x) * (Math.PI / 180)),
+        Math.sin((thisPlayer.rotation + x) * (Math.PI / 180))
+    );
 
-    //         if ((relativeAngle >= 0 && relativeAngle <= 90) || (relativeAngle >= 270 && relativeAngle <= 360) ||
-    //             (relativeAngle <= 0 && relativeAngle >= -90) || (relativeAngle <= -270 && relativeAngle >= -360)) {
+    calculateRayDirection(ray);
 
-    //             object.relativeAngle = relativeAngle;
-    //             object.distance = Math.abs(Math.sqrt(Math.pow(object.x - thisPlayer.x, 2) + Math.pow(object.y - thisPlayer.y, 2)));
-
-    //             pipeline.push(object);
-    //         }
-    //     }
-    // }
+    // Perform raycast
+    excludedBlocks = [];
+    performRaycast(ray, x, onScreenX, 0);
 }
 
 function calculateRayDirection(ray) {
@@ -196,22 +199,6 @@ function calculateRayDirection(ray) {
         ray.stepY = 1;
         ray.offY = (ray.y + 1.0 - thisPlayer.y) * ray.deltaY;
     }
-}
-
-function calculateScanLine(x, onScreenX) {
-    // Create ray, calculate it's position and direction
-    let ray = new Ray(
-        Math.floor(thisPlayer.x),
-        Math.floor(thisPlayer.y),
-        Math.cos((thisPlayer.rotation + x) * (Math.PI / 180)),
-        Math.sin((thisPlayer.rotation + x) * (Math.PI / 180))
-    );
-
-    calculateRayDirection(ray);
-
-    // Perform raycast
-    excludedBlocks = [];
-    performRaycast(ray, x, onScreenX, 0);
 }
 
 function performRaycast(ray, x, onScreenX, layer) {
@@ -270,12 +257,6 @@ function rayHit(ray, x, onScreenX) {
     let correction = Math.cos(x * (Math.PI / 180));
     let perpWallDist;
 
-    /*
-    // Calculate distance projected on camera direction
-    if (ray.side === 0) perpWallDist = (ray.x - thisPlayer.x + (1 - ray.stepX) / 2) / ray.dirX;
-    else perpWallDist = (ray.y - thisPlayer.y + (1 - ray.stepY) / 2) / ray.dirY;
-    */
-
     let jumps = ray.coordJumps.length;
 
     let modifierX = 0, modifierY = 0;
@@ -300,7 +281,7 @@ function rayHit(ray, x, onScreenX) {
     }
 
     // Calculate height of line to draw on screen
-    let lineHeight = context.canvas.height / perpWallDist * context.canvas.width / canvas.height / 4 / correction;
+    let lineHeight = canvas.height / perpWallDist * finalCanvas.width / finalCanvas.height / 6.5 / correction;
 
     //calculate value of wallX
     if (ray.side === 0) ray.sector = thisPlayer.y + perpWallDist * ray.dirY;
@@ -333,14 +314,21 @@ function drawScanLine(ray) {
 
     let texture = getWallTexture(ray.texture);
 
-    context.drawImage(texture, Math.floor(ray.textureX * texture.width), 0, 1, texture.height, Math.floor(ray.onScreenX), horizon - ray.onScreenSize, resolution, ray.onScreenSize * 2);
+    let cropX = Math.floor(ray.textureX * texture.width);
+    let cropHeight = texture.height;
+
+    let x = Math.floor(ray.onScreenX);
+    let y = Math.round(horizon - ray.onScreenSize);
+    let height = ray.onScreenSize * 2;
+
+    context.drawImage(texture, cropX, 0, 1, cropHeight, x, y, 1, height);
 
     // Apply side tint
     if (ray.side === 0 && !transparentBlocks.includes(ray.texture)) {
         context.strokeStyle = 'rgba(0, 0, 0, 0.4)';
         context.beginPath();
-        context.moveTo(ray.onScreenX + resolution / 2, Math.round(horizon - ray.onScreenSize));
-        context.lineTo(ray.onScreenX + resolution / 2, Math.round(horizon + ray.onScreenSize));
+        context.moveTo(x + 0.5, y + height);
+        context.lineTo(x + 0.5, y);
         context.stroke();
     }
 
@@ -348,8 +336,8 @@ function drawScanLine(ray) {
     if (ray.distance > 5) {
         context.strokeStyle = 'rgba(0, 0, 0, ' + (ray.distance - 5) / drawDistance + ')';
         context.beginPath();
-        context.moveTo(ray.onScreenX + resolution / 2, Math.round(horizon - ray.onScreenSize));
-        context.lineTo(ray.onScreenX + resolution / 2, Math.round(horizon + ray.onScreenSize));
+        context.moveTo(x + 0.5, y + height);
+        context.lineTo(x + 0.5, y);
         context.stroke();
     }
 }
@@ -385,8 +373,8 @@ function drawObject(object) {
             sprite = spriteGroup[index];
         }
 
-        let spriteHeight = Math.abs(Math.floor(canvas.height / (transformY) * canvas.width / canvas.height / 2));
-        let spriteWidth = sprite.width / sprite.height * spriteHeight;
+        let spriteHeight = Math.abs(Math.floor(canvas.height / (transformY) * finalCanvas.width / finalCanvas.height / 2));
+        let spriteWidth = sprite.width / sprite.height * spriteHeight / 3;
 
         context.drawImage(sprite, spriteScreenX - spriteWidth / 2,
             horizon - spriteHeight / 2,
@@ -409,88 +397,88 @@ function drawObject(object) {
 
 // FIXME: REALLY 
 function drawMiniMap() {
-    context.font = '8pt Oswald';
-    context.textAlign = 'left';
-    context.fillStyle = 'whitesmoke';
+    finalContext.font = '8pt Oswald';
+    finalContext.textAlign = 'left';
+    finalContext.fillStyle = 'whitesmoke';
 
     let offset = 15;
     let cellSize = 5;
     let playerSize = 2;
     let playerFovSize = 20;
 
-    context.lineWidth = 1;
+    finalContext.lineWidth = 1;
 
     // Draw wall texture
     for (let y = 0; y < world.length; y++) {
         for (let x = 0; x < world[y].length; x++) {
-            context.fillStyle = 'lightgrey';
+            finalContext.fillStyle = 'lightgrey';
             if (world[y][x] !== null) {
                 if (world[y][x] > 0) {
-                    if (transparentBlocks.includes(world[y][x])) context.fillRect(offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
-                    context.drawImage(getWallTexture(world[y][x]), offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
+                    if (transparentBlocks.includes(world[y][x])) finalContext.fillRect(offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
+                    finalContext.drawImage(getWallTexture(world[y][x]), offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
                 } else if (world[y][x] !== -1) {
-                    context.fillRect(offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
+                    finalContext.fillRect(offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
                 }
             }
         }
     }
 
     if (editMode) {
-        context.fillStyle = 'rgba(255,0,0,0.4)';
-        context.fillRect(offset + editPoint.x * cellSize, offset + editPoint.y * cellSize, cellSize, cellSize);
+        finalContext.fillStyle = 'rgba(255,0,0,0.4)';
+        finalContext.fillRect(offset + editPoint.x * cellSize, offset + editPoint.y * cellSize, cellSize, cellSize);
     }
 
     // Draw objects
     for (let i = 0; i < objects.length; i++) {
         let object = objects[i];
         if (object.type >= 0) {
-            context.fillStyle = '#5fa0ff';
+            finalContext.fillStyle = '#5fa0ff';
 
-            context.beginPath();
-            context.arc(offset + object.x * cellSize, offset + object.y * cellSize, playerSize, 0, Math.PI * 2, true);
-            context.fill();
-            context.closePath();
+            finalContext.beginPath();
+            finalContext.arc(offset + object.x * cellSize, offset + object.y * cellSize, playerSize, 0, Math.PI * 2, true);
+            finalContext.fill();
+            finalContext.closePath();
         }
     }
 
     // Draw player fov
-    context.globalAlpha = 0.5;
+    finalContext.globalAlpha = 0.5;
 
     let fov = 90;
 
-    context.fillStyle = 'darkgrey';
+    finalContext.fillStyle = 'darkgrey';
 
     let cos = Math.cos((thisPlayer.rotation - fov / 2) * (Math.PI / 180));
     let sin = Math.sin((thisPlayer.rotation - fov / 2) * (Math.PI / 180));
 
-    context.beginPath();
-    context.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
-    context.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
+    finalContext.beginPath();
+    finalContext.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
+    finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
 
-    context.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerFovSize, (thisPlayer.rotation - fov / 2) * (Math.PI / 180), (thisPlayer.rotation + fov / 2) * (Math.PI / 180), false);
+    finalContext.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerFovSize, (thisPlayer.rotation - fov / 2) * (Math.PI / 180), (thisPlayer.rotation + fov / 2) * (Math.PI / 180), false);
 
     cos = Math.cos((thisPlayer.rotation + fov / 2) * (Math.PI / 180));
     sin = Math.sin((thisPlayer.rotation + fov / 2) * (Math.PI / 180));
-    context.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
-    context.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
-    context.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
+    finalContext.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
+    finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
+    finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
 
-    context.fill();
-    context.closePath();
+    finalContext.fill();
+    finalContext.closePath();
 
-    context.globalAlpha = 1;
+    finalContext.globalAlpha = 1;
 
     // Draw thisPlayer
-    context.fillStyle = 'grey';
+    finalContext.fillStyle = 'grey';
 
-    context.beginPath();
-    context.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerSize, 0, Math.PI * 2, true);
-    context.fill();
-    context.closePath();
+    finalContext.beginPath();
+    finalContext.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerSize, 0, Math.PI * 2, true);
+    finalContext.fill();
+    finalContext.closePath();
 
-    context.textAlign = 'left';
-    context.fillStyle = 'lightgrey';
-    context.fillText(
+    finalContext.textAlign = 'left';
+    finalContext.fillStyle = 'lightgrey';
+    finalContext.fillText(
         'x: ' + thisPlayer.x.toFixed(2) +
         ' y: ' + thisPlayer.y.toFixed(2) +
         ' rot: ' + thisPlayer.rotation.toFixed(2),
@@ -498,24 +486,16 @@ function drawMiniMap() {
     );
 
     if (editMode) {
-        context.fillStyle = 'grey';
-        context.fillRect(248, 14, 36, 36);
+        finalContext.fillStyle = 'grey';
+        finalContext.fillRect(248, 14, 36, 36);
         if (editBlock >= 0) {
-            context.drawImage(textures[editBlock], 250, 16, 32, 32);
+            finalContext.drawImage(textures[editBlock], 250, 16, 32, 32);
         } else {
-            context.textAlign = 'center';
-            context.fillStyle = 'lightgrey';
-            context.fillText('VOID', 266, 36);
+            finalContext.textAlign = 'center';
+            finalContext.fillStyle = 'lightgrey';
+            finalContext.fillText('VOID', 266, 36);
         }
     }
-}
-
-function drawScene() {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    drawBackground();
-    drawFrame();
-    drawMiniMap();
 }
 
 // Physics lets
@@ -593,8 +573,8 @@ function updatePlayerPosition(deltaTime) {
 
 // -Controls-
 // Lock pointer on click
-canvas.onclick = function () {
-    canvas.requestPointerLock();
+finalCanvas.onclick = function () {
+    finalCanvas.requestPointerLock();
 };
 
 // Add listener for pointer lock
@@ -602,7 +582,7 @@ document.addEventListener('pointerlockchange', lockChangeAlert, false);
 
 // Add and remove listener for mouse movement on pointer lock
 function lockChangeAlert() {
-    if (document.pointerLockElement === canvas && gameState === 1) {
+    if (document.pointerLockElement === finalCanvas && gameState === 1) {
         console.log('The pointer lock status is now locked');
         document.addEventListener("mousemove", cameraMove, false);
     } else {
@@ -657,11 +637,11 @@ window.addEventListener('keyup', e => {
 
 // Recalculate canvas size on window resize
 window.onresize = function() {
-    context.canvas.width = window.innerWidth;
-    context.canvas.height = window.innerHeight;
-    scanLineStep = 2 / (context.canvas.width / resolution);
-    context.imageSmoothingEnabled = false;
-    horizon = window.innerHeight / 2;
+    finalCanvas.width = window.innerWidth;
+    finalCanvas.height = window.innerHeight;
+    finalContext.imageSmoothingEnabled = false;
+    // scanLineStep = 2 / (context.canvas.width / resolution);
+    horizon = canvas.height / 2;
 }
 
 function updateFps() {
@@ -677,8 +657,6 @@ function renderLoop() {
 
     if (gameState >= 0) {
         updatePlayerPosition(deltaTime);
-
-        updateFrame();
 
         drawScene();
     }
