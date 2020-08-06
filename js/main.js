@@ -20,7 +20,7 @@ let portals = [];
 
 // Preset default world
 world = [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,3,3,1,1,1,1,1,1,1],[1,9,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,8,0,0,0,0,0,0,0,0,2,0,2,0,0,0,4,0,0,6,1,4,4,4,4,4,1],[1,7,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,6,0,0,0,0,0,0,0,0,0,9,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,1,1,1,4,1,1,1],[1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,3,1,0,0,0,1],[1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,0,0,9,0,2,1,1],[1,1,0,0,0,0,2,0,0,5,0,0,0,0,0,0,1,3,3,3,3,1,0,0,0,1],[1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,2,1,1,1,1,1,1,4,1,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,1,2,2,2,2,1,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,2,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,2,1,1,1,1,1,1,1,1,1,1,1,1,1],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,0,2],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,5,7],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,0,3],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,2,0,0,0,0,0,0,0,0,0,0,3],[null,null,1,1,1,2,4,2,1,1,1,1,4,1,1,1,1,null,10,0,0,0,0,0,0,0,0,0,5,9],[null,null,null,null,null,1,0,1,null,null,null,1,0,1,null,null,null,null,2,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,4,1,null,1,1,1,4,1,1,1,null,null,1,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,0,1,null,10,0,0,0,0,0,10,null,null,1,0,0,0,0,0,0,0,0,0,5,7],[null,null,null,null,null,1,4,1,null,1,1,1,1,1,1,1,null,null,1,0,0,0,0,0,0,0,0,0,0,2],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1,1,1,1,1,1,1,1,1,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,1,1,2,4,2,1,1,1,1,1,1,1,1,1,1,1,0,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,1,1,1,1,1,1,1,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,7],[null,null,null,1,0,0,0,0,0,5,0,0,0,8],[null,null,null,1,0,0,0,0,0,4,0,0,0,1],[null,null,null,1,1,1,1,1,1,1,1,1,1,1]];
-objects = [{"name":"Cat","x":6.5,"y":11.5,"rotation":0,"type":5,"solid":0,"distance":0,"relativeAngle":0},{"name":"Blood ghoul","x":6.5,"y":12.5,"rotation":0,"type":4,"solid":0,"distance":0,"relativeAngle":0},{"name":"The Shpee","x":6.5,"y":13.5,"rotation":0,"type":3,"solid":0,"distance":0,"relativeAngle":0},{"name":"Orman Ablo","x":6.5,"y":14.5,"rotation":0,"type":2,"solid":0,"distance":0,"relativeAngle":0},{"name":"Nazi dude","x":6.5,"y":15.5,"rotation":0,"type":1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Doom boi","x":6.5,"y":16.5,"rotation":0,"type":0,"solid":0,"distance":0,"relativeAngle":0},{"name":"Hi there!","x":18,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Welcome to Raycaster alpha!","x":19,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Have fun!","x":20,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"THE LAG ROOM","x":23.5,"y":9.3,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Sneaky engie","x":21.5,"y":5.5,"rotation":315,"type":6,"solid":0,"distance":0,"relativeAngle":0},{"name":"Portal experiment","x":18,"y":24.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0}];
+objects = [{"name":"Cat","x":6.5,"y":11.5,"rotation":0,"type":5,"solid":0,"distance":0,"relativeAngle":0},{"name":"Blood ghoul","x":6.5,"y":12.5,"rotation":0,"type":4,"solid":0,"distance":0,"relativeAngle":0},{"name":"The Shpee","x":6.5,"y":13.5,"rotation":0,"type":3,"solid":0,"distance":0,"relativeAngle":0},{"name":"Orman Ablo","x":6.5,"y":14.5,"rotation":0,"type":2,"solid":0,"distance":0,"relativeAngle":0},{"name":"Nazi dude","x":6.5,"y":15.5,"rotation":0,"type":1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Doom boi","x":6.5,"y":16.5,"rotation":0,"type":0,"solid":0,"distance":0,"relativeAngle":0},{"name":"Welcome to kidTech-Lite alpha!","x":19,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"THE LAG ROOM","x":23.5,"y":9.3,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Sneaky engie","x":21.5,"y":5.5,"rotation":315,"type":6,"solid":0,"distance":0,"relativeAngle":0},{"name":"Portal experiment","x":18,"y":24.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0}];
 portals = [[{"x":20,"y":24},{"x":19,"y":34}],[{"x":18,"y":34},{"x":19,"y":24}],[{"x":9,"y":37},{"x":14,"y":37}],[{"x":15,"y":37},{"x":10,"y":37}]];
 
 // Player object
@@ -96,38 +96,37 @@ let maxTransparency = 10;
 
 let drawDistance = 50;
 
-canvas.height = canvas.width * finalCanvas.width / finalCanvas.height;
+let screenRatio = finalCanvas.height / finalCanvas.width;
+
+canvas.height = canvas.width * screenRatio;
+
 let horizon = canvas.height / 2;
+
+let piRatio = Math.PI / 180;
 
 let excludedBlocks = [];
 
 // Drawing funcs
 function drawScene() {
 
-    canvas.height = canvas.width * finalCanvas.width / finalCanvas.height;
+    canvas.height = canvas.width * screenRatio;
     context.imageSmoothingEnabled = false;
 
     updateFrame();
 
-    drawBackground();
+    drawFastBackground();
     drawFrame();
 
     finalContext.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
     
-    drawMiniMap();
+    // drawMiniMap();
 }
 
-function drawBackground() {
-    let gradient = context.createRadialGradient(canvas.width / 2, horizon - canvas.height * 3, canvas.height * 1.5, canvas.width / 2, horizon - canvas.height * 3, canvas.height * 3);
-    gradient.addColorStop(0, '#9b9595');
-    gradient.addColorStop(1, '#696467');
-    context.fillStyle = gradient;
+function drawFastBackground() {
+    context.fillStyle = "lightblue";
     context.fillRect(0, 0, canvas.width, horizon);
 
-    gradient = context.createRadialGradient(canvas.width / 2, horizon + canvas.height * 3, canvas.height * 1.5, canvas.width / 2, horizon + canvas.height * 3, canvas.height * 3);
-    gradient.addColorStop(0, '#887c7f');
-    gradient.addColorStop(1, '#6b6061');
-    context.fillStyle = gradient;
+    context.fillStyle = "#695b5a";
     context.fillRect(0, horizon, canvas.width, canvas.height - horizon);
 }
 
@@ -136,14 +135,9 @@ function updateFrame() {
 
     // Prepare all rays
     for (let onScreenX = 0; onScreenX < canvas.width; onScreenX++) {
-        // let relativeRayAngle = Math.sin(x) * 180 / Math.PI;
-        let relativeRayAngle = Math.atan((onScreenX - canvas.width / 2) / 100) * 180 / Math.PI;
+        let relativeRayAngle = Math.atan((onScreenX - canvas.width / 2) / (canvas.width / 2.14)) * 180 / Math.PI;
 
         calculateScanLine(relativeRayAngle, onScreenX);
-        // calculateScanLine(relativeRayAngle, x);
-
-        // x += scanLineStep;
-        // onScreenX += resolution;
     }
 
     // Prepare all objects
@@ -153,8 +147,8 @@ function updateFrame() {
         if (relativeAngle <= -360) relativeAngle += 360;
         relativeAngle *= -1;
 
-        if ((relativeAngle >= 0 && relativeAngle <= 90) || (relativeAngle >= 270 && relativeAngle <= 360) ||
-            (relativeAngle <= 0 && relativeAngle >= -90) || (relativeAngle <= -270 && relativeAngle >= -360)) {
+        if ((relativeAngle >= 0 && relativeAngle <= 70) || (relativeAngle >= 290 && relativeAngle <= 360) ||
+            (relativeAngle <= 0 && relativeAngle >= -70) || (relativeAngle <= -290 && relativeAngle >= -360)) {
 
             object.relativeAngle = relativeAngle;
             object.distance = Math.abs(Math.sqrt(Math.pow(object.x - thisPlayer.x, 2) + Math.pow(object.y - thisPlayer.y, 2)));
@@ -169,8 +163,8 @@ function calculateScanLine(x, onScreenX) {
     let ray = new Ray(
         Math.floor(thisPlayer.x),
         Math.floor(thisPlayer.y),
-        Math.cos((thisPlayer.rotation + x) * (Math.PI / 180)),
-        Math.sin((thisPlayer.rotation + x) * (Math.PI / 180))
+        Math.cos((thisPlayer.rotation + x) * piRatio),
+        Math.sin((thisPlayer.rotation + x) * piRatio)
     );
 
     calculateRayDirection(ray);
@@ -254,7 +248,7 @@ function performRaycast(ray, x, onScreenX, layer) {
 }
 
 function rayHit(ray, x, onScreenX) {
-    let correction = Math.cos(x * (Math.PI / 180));
+    let correction = Math.cos(x * piRatio);
     let perpWallDist;
 
     let jumps = ray.coordJumps.length;
@@ -281,7 +275,7 @@ function rayHit(ray, x, onScreenX) {
     }
 
     // Calculate height of line to draw on screen
-    let lineHeight = canvas.height / perpWallDist * finalCanvas.width / finalCanvas.height / 6.5 / correction;
+    let lineHeight = canvas.height / perpWallDist / screenRatio / 4.5 / correction;
 
     //calculate value of wallX
     if (ray.side === 0) ray.sector = thisPlayer.y + perpWallDist * ray.dirY;
@@ -319,7 +313,7 @@ function drawScanLine(ray) {
 
     let x = Math.floor(ray.onScreenX);
     let y = Math.round(horizon - ray.onScreenSize);
-    let height = ray.onScreenSize * 2;
+    let height = Math.floor(ray.onScreenSize * 2);
 
     context.drawImage(texture, cropX, 0, 1, cropHeight, x, y, 1, height);
 
@@ -346,11 +340,11 @@ function drawObject(object) {
     let spriteX = object.x - thisPlayer.x;
     let spriteY = object.y - thisPlayer.y;
 
-    let dirX = Math.cos(thisPlayer.rotation * (Math.PI / 180));
-    let dirY = Math.sin(thisPlayer.rotation * (Math.PI / 180));
+    let dirX = Math.cos(thisPlayer.rotation * piRatio);
+    let dirY = Math.sin(thisPlayer.rotation * piRatio);
 
-    let planeX = -Math.sin(thisPlayer.rotation * (Math.PI / 180));
-    let planeY = Math.cos(thisPlayer.rotation * (Math.PI / 180));
+    let planeX = -Math.sin(thisPlayer.rotation * piRatio);
+    let planeY = Math.cos(thisPlayer.rotation * piRatio);
 
     let invDet = 1 / (planeX * dirY - dirX * planeY);
 
@@ -359,22 +353,23 @@ function drawObject(object) {
 
     let spriteScreenX = Math.floor(canvas.width / 2 * (1 + transformX / transformY));
 
-    // Get sprite
+    let spriteHeight = Math.floor(canvas.height / transformY / screenRatio / 2);
+
+    // Draw sprite
     if (object.type >= 0) {
         let spriteGroup = getSprite(object.type);
         let sprite = spriteGroup[0];
 
         if (spriteGroup.length > 1) {
             let angle = -Math.abs(thisPlayer.rotation) + Math.abs(object.rotation) + object.relativeAngle + 360 / spriteGroup.length / 2;
-            if (angle < 0) angle += 360;
             angle = angle % 360;
+            if (angle < 0) angle += 360;
             let index = Math.floor((360 - angle) / 360 * spriteGroup.length);
 
             sprite = spriteGroup[index];
         }
 
-        let spriteHeight = Math.abs(Math.floor(canvas.height / (transformY) * finalCanvas.width / finalCanvas.height / 2));
-        let spriteWidth = sprite.width / sprite.height * spriteHeight / 3;
+        let spriteWidth = sprite.width / sprite.height * spriteHeight;
 
         context.drawImage(sprite, spriteScreenX - spriteWidth / 2,
             horizon - spriteHeight / 2,
@@ -382,16 +377,12 @@ function drawObject(object) {
             spriteHeight);
     }
 
-    if (object.name !== '') {
-        let alpha = 0;
-        if (object.distance >= 10) alpha = 0;
-        else alpha = (10 - object.distance) / 10;
-        context.globalAlpha = alpha;
-        context.font = '14pt Oswald';
+    // Draw name
+    if (object.name !== '' && spriteHeight > 20) {
+        context.font = `${spriteHeight / 16}pt Oswald`;
         context.fillStyle = '#ebebeb';
         context.textAlign = 'center';
-        context.fillText(object.name, spriteScreenX, horizon - 100 / object.distance);
-        context.globalAlpha = 1;
+        context.fillText(object.name, spriteScreenX, horizon - 0.15 * spriteHeight);
     }
 }
 
@@ -448,17 +439,17 @@ function drawMiniMap() {
 
     finalContext.fillStyle = 'darkgrey';
 
-    let cos = Math.cos((thisPlayer.rotation - fov / 2) * (Math.PI / 180));
-    let sin = Math.sin((thisPlayer.rotation - fov / 2) * (Math.PI / 180));
+    let cos = Math.cos((thisPlayer.rotation - fov / 2) * piRatio);
+    let sin = Math.sin((thisPlayer.rotation - fov / 2) * piRatio);
 
     finalContext.beginPath();
     finalContext.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
     finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
 
-    finalContext.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerFovSize, (thisPlayer.rotation - fov / 2) * (Math.PI / 180), (thisPlayer.rotation + fov / 2) * (Math.PI / 180), false);
+    finalContext.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerFovSize, (thisPlayer.rotation - fov / 2) * piRatio, (thisPlayer.rotation + fov / 2) * piRatio, false);
 
-    cos = Math.cos((thisPlayer.rotation + fov / 2) * (Math.PI / 180));
-    sin = Math.sin((thisPlayer.rotation + fov / 2) * (Math.PI / 180));
+    cos = Math.cos((thisPlayer.rotation + fov / 2) * piRatio);
+    sin = Math.sin((thisPlayer.rotation + fov / 2) * piRatio);
     finalContext.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
     finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
     finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
@@ -499,28 +490,28 @@ function drawMiniMap() {
 }
 
 // Physics lets
-let acceleration = 0.0006;
-let friction = 1.1;
+let acceleration = 0.001;
+let friction = 1.2;
 
 let playerSize = 0.3;
 
 // Physics funcs
 function updatePlayerState() {
     if (currentKeyState.w) {
-        thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * (Math.PI / 180));
-        thisPlayer.speedY += acceleration * Math.sin(thisPlayer.rotation * (Math.PI / 180));
+        thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin(thisPlayer.rotation * piRatio);
     }
     if (currentKeyState.s) {
-        thisPlayer.speedX -= acceleration * Math.cos(thisPlayer.rotation * (Math.PI / 180));
-        thisPlayer.speedY -= acceleration * Math.sin(thisPlayer.rotation * (Math.PI / 180));
+        thisPlayer.speedX -= acceleration * Math.cos(thisPlayer.rotation * piRatio);
+        thisPlayer.speedY -= acceleration * Math.sin(thisPlayer.rotation * piRatio);
     }
     if (currentKeyState.a) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation - 90) * (Math.PI / 180));
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation - 90) * (Math.PI / 180));
+        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation - 90) * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation - 90) * piRatio);
     }
     if (currentKeyState.d) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation + 90) * (Math.PI / 180));
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * (Math.PI / 180));
+        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation + 90) * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * piRatio);
     }
 }
 
@@ -559,6 +550,12 @@ function updatePlayerPosition(deltaTime) {
     thisPlayer.speedX /= friction;
     thisPlayer.speedY /= friction;
 
+    // Reset precision
+    thisPlayer.x = thisPlayer.x.toFixedNumber(3);
+    thisPlayer.y = thisPlayer.y.toFixedNumber(3);
+    thisPlayer.rotation = thisPlayer.rotation.toFixedNumber(1);
+    horizon = horizon.toFixedNumber(1);
+
     if (world[Math.floor(thisPlayer.y)][Math.floor(thisPlayer.x)] === 10) {
         let portal = portals.filter(function (a) {
             return (a[0].x === Math.floor(thisPlayer.x) && a[0].y === Math.floor(thisPlayer.y));
@@ -593,13 +590,13 @@ function lockChangeAlert() {
 
 // Get mouse movement and apply it to player rotation
 function cameraMove(e) {
-    thisPlayer.rotation += e.movementX / 10;
+    thisPlayer.rotation += e.movementX / 5;
     if (thisPlayer.rotation < 0) {
         thisPlayer.rotation += 360;
     } else if (thisPlayer.rotation >= 360) {
         thisPlayer.rotation -= 360;
     }
-    horizon -= e.movementY * 1.5;
+    horizon -= e.movementY;
     if (horizon <= canvas.height / 5) {
         horizon = canvas.height / 5;
     } else if (horizon >= canvas.height / 5 * 4) {
@@ -640,7 +637,8 @@ window.onresize = function() {
     finalCanvas.width = window.innerWidth;
     finalCanvas.height = window.innerHeight;
     finalContext.imageSmoothingEnabled = false;
-    // scanLineStep = 2 / (context.canvas.width / resolution);
+
+    screenRatio = finalCanvas.height / finalCanvas.width;
     horizon = canvas.height / 2;
 }
 
@@ -669,3 +667,8 @@ function renderLoop() {
 }
 
 requestAnimationFrame(renderLoop);
+
+Number.prototype.toFixedNumber = function(digits, base){
+    var pow = Math.pow(base||10, digits);
+    return Math.round(this*pow) / pow;
+}
