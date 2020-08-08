@@ -31,11 +31,17 @@ const spriteNames = [
         'resources/sprites/nazi/4.png',
         'resources/sprites/nazi/5.png',
         'resources/sprites/nazi/6.png',
-        'resources/sprites/nazi/7.png',
+        'resources/sprites/nazi/7.png'
     ],
     ['resources/sprites/spessman.png'],
     ['resources/sprites/shpee.png'],
-    ['resources/sprites/blood.png'],
+    [
+        'resources/sprites/blood/0.png',
+        'resources/sprites/blood/1.png',
+        'resources/sprites/blood/2.png',
+        'resources/sprites/blood/3.png',
+        'resources/sprites/blood/4.png'
+    ],
     [
         'resources/sprites/cat/0.png',
         'resources/sprites/cat/1.png',
@@ -44,7 +50,7 @@ const spriteNames = [
         'resources/sprites/cat/4.png',
         'resources/sprites/cat/5.png',
         'resources/sprites/cat/6.png',
-        'resources/sprites/cat/7.png',
+        'resources/sprites/cat/7.png'
     ],
     [
         ['resources/sprites/engie/0.png'],
@@ -70,7 +76,7 @@ const spriteNames = [
         ['resources/sprites/engie/20.png'],
         ['resources/sprites/engie/21.png'],
         ['resources/sprites/engie/22.png'],
-        ['resources/sprites/engie/23.png'],
+        ['resources/sprites/engie/23.png']
     ]
 ];
 
@@ -83,9 +89,9 @@ for (let i = 0; i < textureNames.length; i++) {
     textures.push(temp);
 }
 
-function getWallTexture(type) {
-    if (type > textures.length - 1) { type = 0; }
-    return textures[type];
+function getWallTexture(index) {
+    if (index > textures.length - 1) { index = 0; }
+    return textures[index];
 }
 
 
@@ -102,7 +108,7 @@ for (let i = 0; i < spriteNames.length; i++) {
     sprites.push(tempList);
 }
 
-function getSprite(type) {
-    if (type > sprites.length) { type = 0; a}
-    return sprites[type];
+function getSprite(index) {
+    if (index > sprites.length - 1) { index = 0; }
+    return sprites[index];
 }

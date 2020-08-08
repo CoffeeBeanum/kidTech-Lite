@@ -1,15 +1,16 @@
 import { DEBUG_SOUND } from "./constants.js";
 
 // Canvas
-const finalCanvas = document.getElementById("canvas");
-const finalContext = finalCanvas.getContext("2d", { alpha: false });
-finalCanvas.style.cursor = "default";
-finalContext.canvas.width = window.innerWidth;
-finalContext.canvas.height = window.innerHeight;
-finalContext.imageSmoothingEnabled = false;
+// const finalCanvas = document.getElementById("canvas");
+// finalCanvas.style.cursor = "default";
+// finalCanvas.width = window.innerWidth;
+// finalCanvas.height = window.innerHeight;
+// const finalContext = finalCanvas.getContext("2d", { alpha: false });
+// finalContext.imageSmoothingEnabled = false;
 
 // Offscreen canvas
-const canvas = new OffscreenCanvas(300, 300);
+const canvas = document.getElementById("canvas");
+canvas.width = 500;
 const context = canvas.getContext("2d", { alpha: false });
 context.lineWidth = 1;
 context.imageSmoothingEnabled = false;
@@ -22,4 +23,17 @@ debugSound.volume = 0.2;
 //FPS label
 const fpsLabel = document.getElementById("fps-label");
 
-export { canvas, context, finalCanvas, finalContext, debugSound, fpsLabel }
+// Rendering settings
+const maxTransparency = 10;
+
+const drawDistance = 50;
+
+// Minimap settings
+
+const minimapOffset = 5;
+const minimapCellSize = 4;
+const minimapObjectSize = 1.5;
+const minimapFovSize = 15;
+const minimapFloorColor = 'lightgrey';
+
+export { canvas, context, debugSound, fpsLabel, maxTransparency, drawDistance, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor }

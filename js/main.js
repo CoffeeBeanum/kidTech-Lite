@@ -1,4 +1,5 @@
-import { context, canvas, debugSound, fpsLabel, finalContext, finalCanvas } from './startSettings.js'
+import { world, objects, portals, piRatio } from './constants.js'
+import { context, canvas, debugSound, fpsLabel, maxTransparency, drawDistance, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor } from './startSettings.js'
 
 // System lets
 let frameStart;
@@ -12,16 +13,7 @@ let gameState = 1;
 
 let editMode = false;
 let editPoint = new Point(0, 0);
-let editBlock = -1;
-
-let world = [];
-let objects = [];
-let portals = [];
-
-// Preset default world
-world = [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,3,3,1,1,1,1,1,1,1],[1,9,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,8,0,0,0,0,0,0,0,0,2,0,2,0,0,0,4,0,0,6,1,4,4,4,4,4,1],[1,7,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,6,0,0,0,0,0,0,0,0,0,9,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,1,4,4,4,4,4,1],[1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,1,1,1,4,1,1,1],[1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,3,3,1,0,0,0,1],[1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,0,0,9,0,2,1,1],[1,1,0,0,0,0,2,0,0,5,0,0,0,0,0,0,1,3,3,3,3,1,0,0,0,1],[1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,2,1,1,1,1,1,1,4,1,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,1,2,2,2,2,1,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,2,0,0,0,1],[null,null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,2,1,1,1,1,1,1,1,1,1,1,1,1,1],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,0,2],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,5,7],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,1,0,0,0,0,0,0,0,0,0,0,3],[null,null,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,null,2,0,0,0,0,0,0,0,0,0,0,3],[null,null,1,1,1,2,4,2,1,1,1,1,4,1,1,1,1,null,10,0,0,0,0,0,0,0,0,0,5,9],[null,null,null,null,null,1,0,1,null,null,null,1,0,1,null,null,null,null,2,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,4,1,null,1,1,1,4,1,1,1,null,null,1,0,0,0,0,0,0,0,0,0,0,3],[null,null,null,null,null,1,0,1,null,10,0,0,0,0,0,10,null,null,1,0,0,0,0,0,0,0,0,0,5,7],[null,null,null,null,null,1,4,1,null,1,1,1,1,1,1,1,null,null,1,0,0,0,0,0,0,0,0,0,0,2],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1,1,1,1,1,1,1,1,1,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,4,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,null,null,1,0,1,null,null,null,null,null,null,null,null,null,null,1,0,1],[null,null,null,1,1,2,4,2,1,1,1,1,1,1,1,1,1,1,1,0,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,1,1,1,1,1,1,1,1],[null,null,null,1,0,0,0,0,0,5,0,0,0,7],[null,null,null,1,0,0,0,0,0,5,0,0,0,8],[null,null,null,1,0,0,0,0,0,4,0,0,0,1],[null,null,null,1,1,1,1,1,1,1,1,1,1,1]];
-objects = [{"name":"Cat","x":6.5,"y":11.5,"rotation":0,"type":5,"solid":0,"distance":0,"relativeAngle":0},{"name":"Blood ghoul","x":6.5,"y":12.5,"rotation":0,"type":4,"solid":0,"distance":0,"relativeAngle":0},{"name":"The Shpee","x":6.5,"y":13.5,"rotation":0,"type":3,"solid":0,"distance":0,"relativeAngle":0},{"name":"Orman Ablo","x":6.5,"y":14.5,"rotation":0,"type":2,"solid":0,"distance":0,"relativeAngle":0},{"name":"Nazi dude","x":6.5,"y":15.5,"rotation":0,"type":1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Doom boi","x":6.5,"y":16.5,"rotation":0,"type":0,"solid":0,"distance":0,"relativeAngle":0},{"name":"Welcome to kidTech-Lite alpha!","x":19,"y":16.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"THE LAG ROOM","x":23.5,"y":9.3,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0},{"name":"Sneaky engie","x":21.5,"y":5.5,"rotation":315,"type":6,"solid":0,"distance":0,"relativeAngle":0},{"name":"Portal experiment","x":18,"y":24.5,"rotation":0,"type":-1,"solid":0,"distance":0,"relativeAngle":0}];
-portals = [[{"x":20,"y":24},{"x":19,"y":34}],[{"x":18,"y":34},{"x":19,"y":24}],[{"x":9,"y":37},{"x":14,"y":37}],[{"x":15,"y":37},{"x":10,"y":37}]];
+let editBlock = 0;
 
 // Player object
 function Player() {
@@ -80,6 +72,7 @@ function KeyState() {
     this.a = false;
     this.s = false;
     this.d = false;
+    this.m = false;
 }
 
 let currentKeyState = new KeyState();
@@ -92,34 +85,20 @@ function Point(x, y) {
 
 let pipeline;
 
-let maxTransparency = 10;
-
-let drawDistance = 50;
-
-let screenRatio = finalCanvas.height / finalCanvas.width;
-
-canvas.height = canvas.width * screenRatio;
+let screenRatio = canvas.height / canvas.width;
 
 let horizon = canvas.height / 2;
 
-let piRatio = Math.PI / 180;
-
-let excludedBlocks = [];
+let transparencyFixup = true;
 
 // Drawing funcs
 function drawScene() {
-
-    canvas.height = canvas.width * screenRatio;
-    context.imageSmoothingEnabled = false;
-
     updateFrame();
 
     drawFastBackground();
     drawFrame();
-
-    finalContext.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
     
-    // drawMiniMap();
+    if (currentKeyState.m) drawMiniMap();
 }
 
 function drawFastBackground() {
@@ -169,8 +148,6 @@ function calculateScanLine(x, onScreenX) {
 
     calculateRayDirection(ray);
 
-    // Perform raycast
-    excludedBlocks = [];
     performRaycast(ray, x, onScreenX, 0);
 }
 
@@ -197,8 +174,45 @@ function calculateRayDirection(ray) {
 
 function performRaycast(ray, x, onScreenX, layer) {
     let iterations = 0;
+
     while (ray.hit === 0 && iterations < drawDistance) {
         iterations++;
+
+        // Check if ray is in world bounds
+        if (ray.y < 0 || ray.y > world.length - 1) break;
+        if (ray.x < 0 || ray.x > world[ray.y].length - 1) break;
+        
+        // Check if ray has hit a wall
+        if (world[ray.y][ray.x] > 0) {
+            // Portal check
+            if (world[ray.y][ray.x] === 10) {
+                let portal = portals.filter(function (a) {
+                    return (a[0].x === ray.x && a[0].y === ray.y);
+                });
+                if (portal.length > 0) {
+                    portal = portal[0][1];
+                    ray.coordJumps.push(new Point(ray.x, ray.y));
+                    ray.x = portal.x;
+                    ray.y = portal.y;
+                    ray.coordJumps.push(new Point(ray.x, ray.y));
+                    continue;
+                }
+            }
+            
+            if (transparentBlocks.includes(world[ray.y][ray.x])) {
+                if (layer <= maxTransparency) {
+                    ray.hit = world[ray.y][ray.x];
+                    if (iterations > 1) rayHit(ray, x, onScreenX);
+                    ray.hit = 0;
+
+                    if (transparencyFixup) performBackwardsRaycast(ray, x, onScreenX);
+                }
+            } else {
+                ray.hit = world[ray.y][ray.x];
+                rayHit(ray, x, onScreenX);
+            }
+        }
+
         // Jump to next map square in x-direction or in y-direction
         if (ray.offX < ray.offY) {
             ray.offX += ray.deltaX;
@@ -209,41 +223,34 @@ function performRaycast(ray, x, onScreenX, layer) {
             ray.y += ray.stepY;
             ray.side = 1;
         }
-        // Check if ray has hit a wall
-        if (ray.y < 0 || ray.y > world.length - 1) break;
-        if (ray.x < 0 || ray.x > world[ray.y].length - 1) break;
-        if (world[ray.y][ray.x] > 0) {
-            let excludedHit = false;
-            for (let i = 0; i < excludedBlocks.length; i++) {
-                if (ray.x === excludedBlocks[i].x && ray.y === excludedBlocks[i].y) excludedHit = true;
-            }
-            if (!excludedHit) {
-                if (world[ray.y][ray.x] === 10) {
-                    let portal = portals.filter(function (a) {
-                        return (a[0].x === ray.x && a[0].y === ray.y);
-                    });
-                    if (portal.length > 0) {
-                        portal = portal[0][1];
-                        ray.coordJumps.push(new Point(ray.x, ray.y));
-                        ray.x = portal.x;
-                        ray.y = portal.y;
-                        ray.coordJumps.push(new Point(ray.x, ray.y));
-                        continue;
-                    }
-                }
-                if (transparentBlocks.includes(world[ray.y][ray.x])) {
-                    if (layer <= maxTransparency) {
-                        excludedBlocks.push(new Point(ray.x, ray.y));
-                        ray.hit = world[ray.y][ray.x];
-                        rayHit(ray, x, onScreenX);
-                        ray.hit = 0;
-                    }
-                } else {
-                    ray.hit = world[ray.y][ray.x];
-                    rayHit(ray, x, onScreenX);
-                }
-            }
-        }
+    }
+}
+
+// Launches a simple one-step raycast in given rays opposite direction (used to draw other side of transparent blocks).
+function performBackwardsRaycast(refRay, x, onScreenX) {
+    let ray = { ...refRay };
+
+    ray.dirX *= -1;
+    ray.dirY *= -1;
+
+    if (ray.offX < ray.offY) {
+        ray.x -= ray.stepX * 0.0001;
+        ray.side = 0;
+    } else {
+        ray.y -= ray.stepY * 0.0001;
+        ray.side = 1;
+    }
+
+    calculateRayDirection(ray);
+    
+    // Check if ray is in world bounds
+    if (ray.y < 0 || ray.y > world.length - 1) return;
+    if (ray.x < 0 || ray.x > world[Math.round(ray.y)].length - 1) return;
+    
+    // Check if ray has hit a wall
+    if (world[Math.round(ray.y)][Math.round(ray.x)] > 0) {
+        ray.hit = world[Math.round(ray.y)][Math.round(ray.x)];
+        rayHit(ray, x, onScreenX);
     }
 }
 
@@ -287,7 +294,7 @@ function rayHit(ray, x, onScreenX) {
     if (ray.side === 0 && ray.dirX < 0) textureX = 1 - textureX;
     if (ray.side === 1 && ray.dirY > 0) textureX = 1 - textureX;
 
-    let processedRay = new ProcessedRay(x, onScreenX, ray.hit, textureX, ray.side, perpWallDist, lineHeight);
+    let processedRay = new ProcessedRay(x, onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight);
 
     pipeline.push(processedRay);
 }
@@ -382,110 +389,75 @@ function drawObject(object) {
         context.font = `${spriteHeight / 16}pt Oswald`;
         context.fillStyle = '#ebebeb';
         context.textAlign = 'center';
+        context.shadowColor="black";
+        context.shadowBlur=5;
         context.fillText(object.name, spriteScreenX, horizon - 0.15 * spriteHeight);
+        context.shadowBlur=0;
     }
 }
 
-// FIXME: REALLY 
 function drawMiniMap() {
-    finalContext.font = '8pt Oswald';
-    finalContext.textAlign = 'left';
-    finalContext.fillStyle = 'whitesmoke';
-
-    let offset = 15;
-    let cellSize = 5;
-    let playerSize = 2;
-    let playerFovSize = 20;
-
-    finalContext.lineWidth = 1;
-
-    // Draw wall texture
-    for (let y = 0; y < world.length; y++) {
-        for (let x = 0; x < world[y].length; x++) {
-            finalContext.fillStyle = 'lightgrey';
-            if (world[y][x] !== null) {
-                if (world[y][x] > 0) {
-                    if (transparentBlocks.includes(world[y][x])) finalContext.fillRect(offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
-                    finalContext.drawImage(getWallTexture(world[y][x]), offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
-                } else if (world[y][x] !== -1) {
-                    finalContext.fillRect(offset + x * cellSize, offset + y * cellSize, cellSize, cellSize);
-                }
-            }
-        }
-    }
-
-    if (editMode) {
-        finalContext.fillStyle = 'rgba(255,0,0,0.4)';
-        finalContext.fillRect(offset + editPoint.x * cellSize, offset + editPoint.y * cellSize, cellSize, cellSize);
-    }
+    drawMinimapBlocks();
 
     // Draw objects
     for (let i = 0; i < objects.length; i++) {
         let object = objects[i];
         if (object.type >= 0) {
-            finalContext.fillStyle = '#5fa0ff';
-
-            finalContext.beginPath();
-            finalContext.arc(offset + object.x * cellSize, offset + object.y * cellSize, playerSize, 0, Math.PI * 2, true);
-            finalContext.fill();
-            finalContext.closePath();
+            context.fillStyle = '#5fa0ff';
+            drawMinimapObject(object);
         }
     }
 
     // Draw player fov
-    finalContext.globalAlpha = 0.5;
+    context.globalAlpha = 0.5;
 
     let fov = 90;
 
-    finalContext.fillStyle = 'darkgrey';
+    context.fillStyle = 'darkgrey';
 
-    let cos = Math.cos((thisPlayer.rotation - fov / 2) * piRatio);
-    let sin = Math.sin((thisPlayer.rotation - fov / 2) * piRatio);
+    context.beginPath();
+    context.moveTo(minimapOffset + thisPlayer.x * minimapCellSize, minimapOffset + thisPlayer.y * minimapCellSize);
 
-    finalContext.beginPath();
-    finalContext.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
-    finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
+    context.arc(minimapOffset + Math.floor(thisPlayer.x * minimapCellSize), minimapOffset + Math.floor(thisPlayer.y * minimapCellSize), minimapFovSize, (thisPlayer.rotation - fov / 2) * piRatio, (thisPlayer.rotation + fov / 2) * piRatio, false);
 
-    finalContext.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerFovSize, (thisPlayer.rotation - fov / 2) * piRatio, (thisPlayer.rotation + fov / 2) * piRatio, false);
+    context.fill();
+    context.closePath();
 
-    cos = Math.cos((thisPlayer.rotation + fov / 2) * piRatio);
-    sin = Math.sin((thisPlayer.rotation + fov / 2) * piRatio);
-    finalContext.moveTo(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize);
-    finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
-    finalContext.lineTo(offset + (thisPlayer.x + cos) * cellSize, offset + (thisPlayer.y + sin) * cellSize);
-
-    finalContext.fill();
-    finalContext.closePath();
-
-    finalContext.globalAlpha = 1;
+    context.globalAlpha = 1;
 
     // Draw thisPlayer
-    finalContext.fillStyle = 'grey';
+    context.fillStyle = 'grey';
+    drawMinimapObject(thisPlayer);
+}
 
-    finalContext.beginPath();
-    finalContext.arc(offset + thisPlayer.x * cellSize, offset + thisPlayer.y * cellSize, playerSize, 0, Math.PI * 2, true);
-    finalContext.fill();
-    finalContext.closePath();
-
-    finalContext.textAlign = 'left';
-    finalContext.fillStyle = 'lightgrey';
-    finalContext.fillText(
-        'x: ' + thisPlayer.x.toFixed(2) +
-        ' y: ' + thisPlayer.y.toFixed(2) +
-        ' rot: ' + thisPlayer.rotation.toFixed(2),
-        5, 12
-    );
-
-    if (editMode) {
-        finalContext.fillStyle = 'grey';
-        finalContext.fillRect(248, 14, 36, 36);
-        if (editBlock >= 0) {
-            finalContext.drawImage(textures[editBlock], 250, 16, 32, 32);
-        } else {
-            finalContext.textAlign = 'center';
-            finalContext.fillStyle = 'lightgrey';
-            finalContext.fillText('VOID', 266, 36);
+function drawMinimapBlocks() {
+    for (let y = 0; y < world.length; y++) {
+        for (let x = 0; x < world[y].length; x++) {
+            context.fillStyle = minimapFloorColor;
+            if (world[y][x] !== null) {
+                drawMinimapBlock(x, y);
+            }
         }
+    }
+}
+
+function drawMinimapBlock(x, y) {
+    if (world[y][x] > 0) {
+        if (transparentBlocks.includes(world[y][x])) context.fillRect(minimapOffset + x * minimapCellSize, minimapOffset + y * minimapCellSize, minimapCellSize, minimapCellSize);
+        context.drawImage(getWallTexture(world[y][x]), minimapOffset + x * minimapCellSize, minimapOffset + y * minimapCellSize, minimapCellSize, minimapCellSize);
+    } else if (world[y][x] !== -1) {
+        context.fillRect(minimapOffset + x * minimapCellSize, minimapOffset + y * minimapCellSize, minimapCellSize, minimapCellSize);
+    }
+}
+
+function drawMinimapObject(object) {
+    if (minimapObjectSize > 1) {
+        context.beginPath();
+        context.arc(minimapOffset + Math.floor(object.x * minimapCellSize), minimapOffset + Math.floor(object.y * minimapCellSize), minimapObjectSize, 0, Math.PI * 2, true);
+        context.fill();
+        context.closePath();
+    } else {
+        context.fillRect(minimapOffset + Math.floor(object.x * minimapCellSize), minimapOffset + Math.floor(object.y * minimapCellSize), 1, 1);
     }
 }
 
@@ -496,28 +468,9 @@ let friction = 1.2;
 let playerSize = 0.3;
 
 // Physics funcs
-function updatePlayerState() {
-    if (currentKeyState.w) {
-        thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin(thisPlayer.rotation * piRatio);
-    }
-    if (currentKeyState.s) {
-        thisPlayer.speedX -= acceleration * Math.cos(thisPlayer.rotation * piRatio);
-        thisPlayer.speedY -= acceleration * Math.sin(thisPlayer.rotation * piRatio);
-    }
-    if (currentKeyState.a) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation - 90) * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation - 90) * piRatio);
-    }
-    if (currentKeyState.d) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation + 90) * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * piRatio);
-    }
-}
-
 function updatePlayerPosition(deltaTime) {
-    // Update player states
-    updatePlayerState();
+    // Apply user-produced state updates
+    updateUserInput();
 
     // Perform collision check
     // Collision on x
@@ -568,10 +521,29 @@ function updatePlayerPosition(deltaTime) {
     }
 }
 
-// -Controls-
+function updateUserInput() {
+    if (currentKeyState.w) {
+        thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin(thisPlayer.rotation * piRatio);
+    }
+    if (currentKeyState.s) {
+        thisPlayer.speedX -= acceleration * Math.cos(thisPlayer.rotation * piRatio);
+        thisPlayer.speedY -= acceleration * Math.sin(thisPlayer.rotation * piRatio);
+    }
+    if (currentKeyState.a) {
+        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation - 90) * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation - 90) * piRatio);
+    }
+    if (currentKeyState.d) {
+        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation + 90) * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * piRatio);
+    }
+}
+
+// Controls
 // Lock pointer on click
-finalCanvas.onclick = function () {
-    finalCanvas.requestPointerLock();
+canvas.onclick = function () {
+    canvas.requestPointerLock();
 };
 
 // Add listener for pointer lock
@@ -579,7 +551,7 @@ document.addEventListener('pointerlockchange', lockChangeAlert, false);
 
 // Add and remove listener for mouse movement on pointer lock
 function lockChangeAlert() {
-    if (document.pointerLockElement === finalCanvas && gameState === 1) {
+    if (document.pointerLockElement === canvas && gameState === 1) {
         console.log('The pointer lock status is now locked');
         document.addEventListener("mousemove", cameraMove, false);
     } else {
@@ -611,16 +583,9 @@ document.addEventListener('keydown', e => {
         if (e.keyCode === 83) currentKeyState.s = true;
         if (e.keyCode === 65) currentKeyState.a = true;
         if (e.keyCode === 68) currentKeyState.d = true;
-        if (thisPlayer.admin) {
-            if (e.keyCode === 77) editMode = !editMode;
-            if (e.keyCode === 37) if (editMode && (editPoint.x >= 0)) editPoint.x -= 1;
-            if (e.keyCode === 38) if (editMode && (editPoint.y >= 0)) editPoint.y -= 1;
-            if (e.keyCode === 39) if (editMode) editPoint.x += 1;
-            if (e.keyCode === 40) if (editMode) editPoint.y += 1;
-            if (e.keyCode === 13) if (editMode) client.emit('world change', editPoint.x, editPoint.y, editBlock);
-            if (e.keyCode === 33) if (editMode && (editBlock > -1)) editBlock -= 1;
-            if (e.keyCode === 34) if (editMode && (editBlock < textures.length - 1)) editBlock += 1;
-        }
+        if (e.keyCode === 77) currentKeyState.m = true;
+
+        if (e.keyCode === 78) transparencyFixup = !transparencyFixup;
     }
 });
 
@@ -630,20 +595,26 @@ window.addEventListener('keyup', e => {
     if (e.keyCode === 83) currentKeyState.s = false;
     if (e.keyCode === 65) currentKeyState.a = false;
     if (e.keyCode === 68) currentKeyState.d = false;
+    if (e.keyCode === 77) currentKeyState.m = false;
 });
 
 // Recalculate canvas size on window resize
 window.onresize = function() {
-    finalCanvas.width = window.innerWidth;
-    finalCanvas.height = window.innerHeight;
-    finalContext.imageSmoothingEnabled = false;
+    screenRatio = window.innerHeight / window.innerWidth;
 
-    screenRatio = finalCanvas.height / finalCanvas.width;
+    // canvas.width = window.innerWidth * pixelFactor;
+    canvas.height = canvas.width * screenRatio;
+    
+    context.imageSmoothingEnabled = false;
+
     horizon = canvas.height / 2;
 }
+window.onresize();
 
 function updateFps() {
-    fpsLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>Frametime: ${(frameEnd - frameStart).toFixed(2)}ms`;
+    fpsLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>
+    Frametime: ${(frameEnd - frameStart).toFixed(2)}ms<br>
+    Resolution: ${canvas.width}x${canvas.height}`;
 }
 
 function renderLoop() {
