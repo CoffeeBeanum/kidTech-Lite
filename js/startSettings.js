@@ -10,7 +10,7 @@ import { DEBUG_SOUND } from "./constants.js";
 
 // Offscreen canvas
 const canvas = document.getElementById("canvas");
-canvas.width = 500;
+canvas.width = 400;
 const context = canvas.getContext("2d", { alpha: false });
 context.lineWidth = 1;
 context.imageSmoothingEnabled = false;
@@ -30,7 +30,7 @@ const drawDistance = 50;
 
 // Minimap settings
 
-const minimapOffset = 5;
+const minimapOffset = 50;
 const minimapCellSize = 4;
 const minimapObjectSize = 1.5;
 const minimapFovSize = 15;

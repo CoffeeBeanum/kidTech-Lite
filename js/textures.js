@@ -1,15 +1,19 @@
 // Name lists
 const textureNames = [
-    'resources/textures/0.png',
-    'resources/textures/1.png',
-    'resources/textures/2.png',
-    'resources/textures/3.png',
-    'resources/textures/door.png',
-    'resources/textures/bars.png',
-    'resources/textures/vobla.png',
-    'resources/textures/face.png',
-    'resources/textures/text1.png',
-    'resources/textures/engie.png'
+    'resources/textures/walls/error.png',
+    'resources/textures/walls/brick_wall.png',
+    'resources/textures/walls/metal_arch.png',
+    'resources/textures/walls/metal_window.png'
+];
+
+const decalNames = [
+    'resources/textures/decals/art_landscape.png',
+    'resources/textures/decals/art_vobla.png',
+    'resources/textures/decals/art_engie.png',
+    'resources/textures/decals/warning.png',
+    'resources/textures/decals/metal_plate.png',
+    'resources/textures/decals/lag_room.png',
+    'resources/textures/decals/epic_decals.png'
 ];
 
 const spriteNames = [
@@ -80,7 +84,7 @@ const spriteNames = [
     ]
 ];
 
-// Load textures
+// Texture loading
 let textures = [];
 
 for (let i = 0; i < textureNames.length; i++) {
@@ -94,8 +98,21 @@ function getWallTexture(index) {
     return textures[index];
 }
 
+// Decal loading
+let decals = [];
 
-// Load sprites
+for (let i = 0; i < decalNames.length; i++) {
+    let temp = new Image();
+    temp.src = decalNames[i];
+    decals.push(temp);
+}
+
+function getDecal(index) {
+    if (index > decals.length - 1) { index = 0; }
+    return decals[index];
+}
+
+// Sprite loading
 let sprites = [];
 
 for (let i = 0; i < spriteNames.length; i++) {

@@ -1,4 +1,4 @@
-import { world, objects, portals, piRatio } from './constants.js'
+import { world, decals, objects, portals, piRatio } from './constants.js'
 import { context, canvas, debugSound, fpsLabel, maxTransparency, drawDistance, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor } from './startSettings.js'
 
 // System lets
@@ -17,9 +17,9 @@ let editBlock = 0;
 
 // Player object
 function Player() {
-    this.x = 19;
-    this.y = 20;
-    this.rotation = 260;
+    this.x = 12;
+    this.y = 6;
+    this.rotation = 150;
     this.speedX = 0;
     this.speedY = 0;
 }
@@ -51,19 +51,23 @@ function Ray(x, y, dirX, dirY) {
     this.stepX = 0; // ray step direction
     this.stepY = 0;
     this.hit = 0; // type of wall ray hit
+    this.transparent = false;
+    this.done = false;
     this.side = 0; // side of the wall ray hit
     this.sector = 0; // sector of wall ray hit
     this.coordJumps = [];
 }
 
-function ProcessedRay(x, onScreenX, texture, textureX, side, distance, onScreenSize) {
+function ProcessedRay(x, onScreenX, textureIndex, textureX, side, distance, onScreenSize, decalIndex, transparent) {
     this.x = x; // position on projected plane
     this.onScreenX = onScreenX; // onscreen position
-    this.texture = texture; // texture index
+    this.textureIndex = textureIndex; // texture index
     this.textureX = textureX; // position on texture
     this.side = side; // side of the wall ray hit
     this.distance = distance; // ray length
     this.onScreenSize = onScreenSize; // ray size on screen
+    this.decalIndex = decalIndex;
+    this.transparent = transparent;
 }
 
 // Key states
@@ -88,8 +92,6 @@ let pipeline;
 let screenRatio = canvas.height / canvas.width;
 
 let horizon = canvas.height / 2;
-
-let transparencyFixup = true;
 
 // Drawing funcs
 function drawScene() {
@@ -175,17 +177,19 @@ function calculateRayDirection(ray) {
 function performRaycast(ray, x, onScreenX, layer) {
     let iterations = 0;
 
-    while (ray.hit === 0 && iterations < drawDistance) {
+    while (!ray.done && iterations < drawDistance) {
         iterations++;
 
         // Check if ray is in world bounds
         if (ray.y < 0 || ray.y > world.length - 1) break;
         if (ray.x < 0 || ray.x > world[ray.y].length - 1) break;
         
+        ray.transparent = false;
+
         // Check if ray has hit a wall
         if (world[ray.y][ray.x] > 0) {
             // Portal check
-            if (world[ray.y][ray.x] === 10) {
+            if (world[ray.y][ray.x] === 5) {
                 let portal = portals.filter(function (a) {
                     return (a[0].x === ray.x && a[0].y === ray.y);
                 });
@@ -201,16 +205,19 @@ function performRaycast(ray, x, onScreenX, layer) {
             
             if (transparentBlocks.includes(world[ray.y][ray.x])) {
                 if (layer <= maxTransparency) {
+                    let skipHit = mergeableBlocks.includes(ray.hit) ? world[ray.y][ray.x] === ray.hit : false;
                     ray.hit = world[ray.y][ray.x];
-                    if (iterations > 1) rayHit(ray, x, onScreenX);
-                    ray.hit = 0;
-
-                    if (transparencyFixup) performBackwardsRaycast(ray, x, onScreenX);
+                    ray.transparent = true;
+                    if (iterations > 1 && !skipHit) rayHit(ray, x, onScreenX);
+                    performBackwardsRaycast(ray, x, onScreenX);
                 }
             } else {
                 ray.hit = world[ray.y][ray.x];
                 rayHit(ray, x, onScreenX);
+                ray.done = true;
             }
+        } else {
+            ray.hit = 0;
         }
 
         // Jump to next map square in x-direction or in y-direction
@@ -226,9 +233,30 @@ function performRaycast(ray, x, onScreenX, layer) {
     }
 }
 
-// Launches a simple one-step raycast in given rays opposite direction (used to draw other side of transparent blocks).
+// Launches a simple one-step, fixed block type raycast in given rays opposite direction (used to draw other side of transparent blocks).
 function performBackwardsRaycast(refRay, x, onScreenX) {
     let ray = { ...refRay };
+
+    // Check if next visible block is of the same type - stop raycast if it is
+    if (ray.offX < ray.offY) {
+        ray.offX += ray.deltaX;
+        ray.x += ray.stepX;
+        ray.side = 0;
+    } else {
+        ray.offY += ray.deltaY;
+        ray.y += ray.stepY;
+        ray.side = 1;
+    }
+
+    // Check if ray is within world bounds
+    if (ray.y < 0 || ray.y > world.length - 1) return;
+    if (ray.x < 0 || ray.x > world[Math.round(ray.y)].length - 1) return;
+
+    // Check if ray has hit a wall
+    if (world[Math.round(ray.y)][Math.round(ray.x)] == ray.hit) return;
+    if (ray.decal && (world[Math.round(ray.y)][Math.round(ray.x)] === 0 || decalBlocks.includes(world[Math.round(ray.y)][Math.round(ray.x)]))) return;
+
+    ray = { ...refRay };
 
     ray.dirX *= -1;
     ray.dirY *= -1;
@@ -248,8 +276,7 @@ function performBackwardsRaycast(refRay, x, onScreenX) {
     if (ray.x < 0 || ray.x > world[Math.round(ray.y)].length - 1) return;
     
     // Check if ray has hit a wall
-    if (world[Math.round(ray.y)][Math.round(ray.x)] > 0) {
-        ray.hit = world[Math.round(ray.y)][Math.round(ray.x)];
+    if (world[Math.round(ray.y)][Math.round(ray.x)] == ray.hit) {
         rayHit(ray, x, onScreenX);
     }
 }
@@ -293,8 +320,17 @@ function rayHit(ray, x, onScreenX) {
     let textureX = ray.sector;
     if (ray.side === 0 && ray.dirX < 0) textureX = 1 - textureX;
     if (ray.side === 1 && ray.dirY > 0) textureX = 1 - textureX;
+    if (ray.decal) textureX = 1 - textureX;
 
-    let processedRay = new ProcessedRay(x, onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight);
+    let decalTexture = -1;
+    let decal = decals.filter(function (a) {
+        return (a.x === Math.round(ray.x) && a.y === Math.round(ray.y));
+    });
+    if (decal.length > 0) {
+        decalTexture = decal[0].type;
+    }
+
+    let processedRay = new ProcessedRay(x, onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, decalTexture, ray.transparent);
 
     pipeline.push(processedRay);
 }
@@ -313,7 +349,7 @@ function drawFrame() {
 
 function drawScanLine(ray) {
 
-    let texture = getWallTexture(ray.texture);
+    let texture = getWallTexture(ray.textureIndex);
 
     let cropX = Math.floor(ray.textureX * texture.width);
     let cropHeight = texture.height;
@@ -324,21 +360,28 @@ function drawScanLine(ray) {
 
     context.drawImage(texture, cropX, 0, 1, cropHeight, x, y, 1, height);
 
+    if (ray.decalIndex >= 0) {
+        let decal = getDecal(ray.decalIndex);
+        let cropX = Math.floor(ray.textureX * decal.width);
+        let cropHeight = decal.height;
+        context.drawImage(decal, cropX, 0, 1, cropHeight, x, y, 1, height);
+    }
+
     // Apply side tint
-    if (ray.side === 0 && !transparentBlocks.includes(ray.texture)) {
+    if (ray.side === 0 && !ray.transparent) {
         context.strokeStyle = 'rgba(0, 0, 0, 0.4)';
         context.beginPath();
-        context.moveTo(x + 0.5, y + height);
-        context.lineTo(x + 0.5, y);
+        context.moveTo(x + 0.5, y);
+        context.lineTo(x + 0.5, y + height);
         context.stroke();
     }
 
     // Apply distance fog
-    if (ray.distance > 5) {
+    if (ray.distance > 5 && !ray.decal) {
         context.strokeStyle = 'rgba(0, 0, 0, ' + (ray.distance - 5) / drawDistance + ')';
         context.beginPath();
-        context.moveTo(x + 0.5, y + height);
-        context.lineTo(x + 0.5, y);
+        context.moveTo(x + 0.5, y);
+        context.lineTo(x + 0.5, y + height);
         context.stroke();
     }
 }
@@ -360,7 +403,7 @@ function drawObject(object) {
 
     let spriteScreenX = Math.floor(canvas.width / 2 * (1 + transformX / transformY));
 
-    let spriteHeight = Math.floor(canvas.height / transformY / screenRatio / 2);
+    let spriteHeight = Math.floor(canvas.height / transformY / screenRatio / 2.1);
 
     // Draw sprite
     if (object.type >= 0) {
@@ -397,37 +440,24 @@ function drawObject(object) {
 }
 
 function drawMiniMap() {
+    context.imageSmoothingEnabled = true;
+
+    // Draw map blocks
     drawMinimapBlocks();
 
     // Draw objects
-    for (let i = 0; i < objects.length; i++) {
-        let object = objects[i];
-        if (object.type >= 0) {
-            context.fillStyle = '#5fa0ff';
-            drawMinimapObject(object);
-        }
-    }
+    context.fillStyle = '#5fa0ff';
+    drawMinimapObjects();
 
     // Draw player fov
-    context.globalAlpha = 0.5;
-
-    let fov = 90;
-
     context.fillStyle = 'darkgrey';
-
-    context.beginPath();
-    context.moveTo(minimapOffset + thisPlayer.x * minimapCellSize, minimapOffset + thisPlayer.y * minimapCellSize);
-
-    context.arc(minimapOffset + Math.floor(thisPlayer.x * minimapCellSize), minimapOffset + Math.floor(thisPlayer.y * minimapCellSize), minimapFovSize, (thisPlayer.rotation - fov / 2) * piRatio, (thisPlayer.rotation + fov / 2) * piRatio, false);
-
-    context.fill();
-    context.closePath();
-
-    context.globalAlpha = 1;
+    drawMinimapObjectFov(thisPlayer);
 
     // Draw thisPlayer
     context.fillStyle = 'grey';
     drawMinimapObject(thisPlayer);
+
+    context.imageSmoothingEnabled = false;
 }
 
 function drawMinimapBlocks() {
@@ -450,6 +480,15 @@ function drawMinimapBlock(x, y) {
     }
 }
 
+function drawMinimapObjects() {
+    for (let i = 0; i < objects.length; i++) {
+        let object = objects[i];
+        if (object.type >= 0) {
+            drawMinimapObject(object);
+        }
+    }
+}
+
 function drawMinimapObject(object) {
     if (minimapObjectSize > 1) {
         context.beginPath();
@@ -459,6 +498,22 @@ function drawMinimapObject(object) {
     } else {
         context.fillRect(minimapOffset + Math.floor(object.x * minimapCellSize), minimapOffset + Math.floor(object.y * minimapCellSize), 1, 1);
     }
+}
+
+function drawMinimapObjectFov(object) {
+    context.globalAlpha = 0.5;
+
+    let fov = 90;
+
+    context.beginPath();
+    context.moveTo(minimapOffset + object.x * minimapCellSize, minimapOffset + object.y * minimapCellSize);
+
+    context.arc(minimapOffset + Math.floor(object.x * minimapCellSize), minimapOffset + Math.floor(object.y * minimapCellSize), minimapFovSize, (object.rotation - fov / 2) * piRatio, (object.rotation + fov / 2) * piRatio, false);
+
+    context.fill();
+    context.closePath();
+
+    context.globalAlpha = 1;
 }
 
 // Physics lets
@@ -473,27 +528,7 @@ function updatePlayerPosition(deltaTime) {
     updateUserInput();
 
     // Perform collision check
-    // Collision on x
-    // Negative offset
-    let nextStep = thisPlayer.x + thisPlayer.speedX * deltaTime;
-    if (!nonSolidBlocks.includes(world[Math.floor(thisPlayer.y)][Math.floor(nextStep - playerSize)])) {
-        thisPlayer.x += 1 - ((nextStep - playerSize) - Math.floor(nextStep - playerSize));
-    }
-    // Positive offset
-    if (!nonSolidBlocks.includes(world[Math.floor(thisPlayer.y)][Math.floor(nextStep + playerSize)])) {
-        thisPlayer.x -= (nextStep + playerSize) - Math.floor(nextStep + playerSize);
-    }
-
-    // Collision on y
-    // Negative offset
-    nextStep = thisPlayer.y + thisPlayer.speedY * deltaTime;
-    if (!nonSolidBlocks.includes(world[Math.floor(nextStep - playerSize)][Math.floor(thisPlayer.x)])) {
-        thisPlayer.y += 1 - ((nextStep - playerSize) - Math.floor(nextStep - playerSize));
-    }
-    // Positive offset
-    if (!nonSolidBlocks.includes(world[Math.floor(nextStep + playerSize)][Math.floor(thisPlayer.x)])) {
-        thisPlayer.y -= (nextStep + playerSize) - Math.floor(nextStep + playerSize);
-    }
+    performCollisionCheck();
 
     // Apply player speed
     thisPlayer.x += thisPlayer.speedX * deltaTime;
@@ -507,9 +542,9 @@ function updatePlayerPosition(deltaTime) {
     thisPlayer.x = thisPlayer.x.toFixedNumber(3);
     thisPlayer.y = thisPlayer.y.toFixedNumber(3);
     thisPlayer.rotation = thisPlayer.rotation.toFixedNumber(1);
-    horizon = horizon.toFixedNumber(1);
+    horizon = Math.round(horizon);
 
-    if (world[Math.floor(thisPlayer.y)][Math.floor(thisPlayer.x)] === 10) {
+    if (world[Math.floor(thisPlayer.y)][Math.floor(thisPlayer.x)] === 5) {
         let portal = portals.filter(function (a) {
             return (a[0].x === Math.floor(thisPlayer.x) && a[0].y === Math.floor(thisPlayer.y));
         });
@@ -518,6 +553,30 @@ function updatePlayerPosition(deltaTime) {
             thisPlayer.x += portal[1].x - portal[0].x;
             thisPlayer.y += portal[1].y - portal[0].y;
         }
+    }
+}
+
+function performCollisionCheck() {
+    // Collision on x
+    let nextStep = thisPlayer.x + thisPlayer.speedX * deltaTime;
+    // Negative offset
+    if (!nonSolidBlocks.includes(world[Math.floor(thisPlayer.y)][Math.floor(nextStep - playerSize)])) {
+        thisPlayer.x += 1 - ((nextStep - playerSize) - Math.floor(nextStep - playerSize));
+    }
+    // Positive offset
+    if (!nonSolidBlocks.includes(world[Math.floor(thisPlayer.y)][Math.floor(nextStep + playerSize)])) {
+        thisPlayer.x -= (nextStep + playerSize) - Math.floor(nextStep + playerSize);
+    }
+
+    // Collision on y
+    nextStep = thisPlayer.y + thisPlayer.speedY * deltaTime;
+    // Negative offset
+    if (!nonSolidBlocks.includes(world[Math.floor(nextStep - playerSize)][Math.floor(thisPlayer.x)])) {
+        thisPlayer.y += 1 - ((nextStep - playerSize) - Math.floor(nextStep - playerSize));
+    }
+    // Positive offset
+    if (!nonSolidBlocks.includes(world[Math.floor(nextStep + playerSize)][Math.floor(thisPlayer.x)])) {
+        thisPlayer.y -= (nextStep + playerSize) - Math.floor(nextStep + playerSize);
     }
 }
 
@@ -584,8 +643,6 @@ document.addEventListener('keydown', e => {
         if (e.keyCode === 65) currentKeyState.a = true;
         if (e.keyCode === 68) currentKeyState.d = true;
         if (e.keyCode === 77) currentKeyState.m = true;
-
-        if (e.keyCode === 78) transparencyFixup = !transparencyFixup;
     }
 });
 
@@ -602,7 +659,6 @@ window.addEventListener('keyup', e => {
 window.onresize = function() {
     screenRatio = window.innerHeight / window.innerWidth;
 
-    // canvas.width = window.innerWidth * pixelFactor;
     canvas.height = canvas.width * screenRatio;
     
     context.imageSmoothingEnabled = false;
