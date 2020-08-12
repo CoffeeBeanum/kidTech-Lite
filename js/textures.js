@@ -13,7 +13,8 @@ const decalNames = [
     'resources/textures/decals/warning.png',
     'resources/textures/decals/metal_plate.png',
     'resources/textures/decals/lag_room.png',
-    'resources/textures/decals/epic_decals.png'
+    'resources/textures/decals/epic_decals.png',
+    'resources/textures/decals/test_alpha.png'
 ];
 
 const spriteNames = [
@@ -84,13 +85,38 @@ const spriteNames = [
     ]
 ];
 
+const tempCanvas = document.getElementById("tempCanvas");
+const tempContext = tempCanvas.getContext("2d", { alpha: true });
+
+let skybox = new Image();
+skybox.src = "resources/skybox.jpg";
+
+function Texture(imageData, width, height) {
+    this.imageData = imageData;
+    this.width = width;
+    this.height = height;
+}
+
 // Texture loading
 let textures = [];
 
 for (let i = 0; i < textureNames.length; i++) {
-    let temp = new Image();
-    temp.src = textureNames[i];
-    textures.push(temp);
+    let tempImage = new Image();
+    tempImage.src = textureNames[i];
+
+    let index = i;
+
+    tempImage.onload = function() {
+        tempCanvas.width = tempImage.width;
+        tempCanvas.height = tempImage.height;
+        tempContext.drawImage(tempImage, 0, 0);
+
+        let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+
+        let texture = new Texture(imageData, tempImage.width, tempImage.height);
+
+        textures[index] = texture;
+    }
 }
 
 function getWallTexture(index) {
@@ -102,9 +128,22 @@ function getWallTexture(index) {
 let decals = [];
 
 for (let i = 0; i < decalNames.length; i++) {
-    let temp = new Image();
-    temp.src = decalNames[i];
-    decals.push(temp);
+    let tempImage = new Image();
+    tempImage.src = decalNames[i];
+
+    let index = i;
+    
+    tempImage.onload = function() {
+        tempCanvas.width = tempImage.width;
+        tempCanvas.height = tempImage.height;
+        tempContext.drawImage(tempImage, 0, 0);
+
+        let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+
+        let texture = new Texture(imageData, tempImage.width, tempImage.height);
+
+        decals[index] = texture;
+    }
 }
 
 function getDecal(index) {

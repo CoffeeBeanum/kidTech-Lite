@@ -1,14 +1,6 @@
 import { DEBUG_SOUND } from "./constants.js";
 
 // Canvas
-// const finalCanvas = document.getElementById("canvas");
-// finalCanvas.style.cursor = "default";
-// finalCanvas.width = window.innerWidth;
-// finalCanvas.height = window.innerHeight;
-// const finalContext = finalCanvas.getContext("2d", { alpha: false });
-// finalContext.imageSmoothingEnabled = false;
-
-// Offscreen canvas
 const canvas = document.getElementById("canvas");
 canvas.width = 400;
 const context = canvas.getContext("2d", { alpha: false });
@@ -28,6 +20,12 @@ const maxTransparency = 10;
 
 const drawDistance = 50;
 
+const tintStrength = 0.4;
+
+const fogStartDistance = 20;
+
+const maxHorizonSkew = 80;
+
 // Minimap settings
 
 const minimapOffset = 50;
@@ -36,4 +34,4 @@ const minimapObjectSize = 1.5;
 const minimapFovSize = 15;
 const minimapFloorColor = 'lightgrey';
 
-export { canvas, context, debugSound, fpsLabel, maxTransparency, drawDistance, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor }
+export { canvas, context, debugSound, fpsLabel, maxTransparency, drawDistance, tintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor }

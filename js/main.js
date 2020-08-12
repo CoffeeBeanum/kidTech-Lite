@@ -1,5 +1,5 @@
 import { world, decals, objects, portals, piRatio } from './constants.js'
-import { context, canvas, debugSound, fpsLabel, maxTransparency, drawDistance, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor } from './startSettings.js'
+import { context, canvas, debugSound, fpsLabel, maxTransparency, drawDistance, tintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor } from './startSettings.js'
 
 // System lets
 let frameStart;
@@ -10,10 +10,6 @@ let deltaTime;
 let lastTime = Date.now();
 
 let gameState = 1;
-
-let editMode = false;
-let editPoint = new Point(0, 0);
-let editBlock = 0;
 
 // Player object
 function Player() {
@@ -51,15 +47,13 @@ function Ray(x, y, dirX, dirY) {
     this.stepX = 0; // ray step direction
     this.stepY = 0;
     this.hit = 0; // type of wall ray hit
-    this.transparent = false;
     this.done = false;
     this.side = 0; // side of the wall ray hit
     this.sector = 0; // sector of wall ray hit
     this.coordJumps = [];
 }
 
-function ProcessedRay(x, onScreenX, textureIndex, textureX, side, distance, onScreenSize, decalIndex, transparent) {
-    this.x = x; // position on projected plane
+function ProcessedRay(onScreenX, textureIndex, textureX, side, distance, onScreenSize, decalIndex) {
     this.onScreenX = onScreenX; // onscreen position
     this.textureIndex = textureIndex; // texture index
     this.textureX = textureX; // position on texture
@@ -67,7 +61,6 @@ function ProcessedRay(x, onScreenX, textureIndex, textureX, side, distance, onSc
     this.distance = distance; // ray length
     this.onScreenSize = onScreenSize; // ray size on screen
     this.decalIndex = decalIndex;
-    this.transparent = transparent;
 }
 
 // Key states
@@ -77,6 +70,10 @@ function KeyState() {
     this.s = false;
     this.d = false;
     this.m = false;
+    this.leftArrow = false;
+    this.rightArrow = false;
+    this.upArrow = false;
+    this.downArrow = false;
 }
 
 let currentKeyState = new KeyState();
@@ -93,32 +90,41 @@ let screenRatio = canvas.height / canvas.width;
 
 let horizon = canvas.height / 2;
 
+let imageData = context.createImageData(canvas.width, canvas.height);
+
 // Drawing funcs
 function drawScene() {
-    updateFrame();
+    prepareFrame();
 
-    drawFastBackground();
+    drawSkybox();
+    drawFastFloor();
+
     drawFrame();
     
     if (currentKeyState.m) drawMiniMap();
 }
 
-function drawFastBackground() {
-    context.fillStyle = "lightblue";
-    context.fillRect(0, 0, canvas.width, horizon);
+function drawSkybox() {
+    context.drawImage(skybox, Math.floor(-canvas.width / 360 * thisPlayer.rotation * 2), Math.floor(-maxHorizonSkew + horizon - canvas.height / 2), canvas.width * 2, (canvas.height + maxHorizonSkew * 2));
+    context.drawImage(skybox, Math.floor(canvas.width * 2 - canvas.width / 360 * thisPlayer.rotation * 2), Math.floor(-maxHorizonSkew + horizon - canvas.height / 2), canvas.width * 2, (canvas.height + maxHorizonSkew * 2));
+}
 
+function drawFastFloor() {
     context.fillStyle = "#695b5a";
     context.fillRect(0, horizon, canvas.width, canvas.height - horizon);
 }
 
-function updateFrame() {
+function prepareFrame() {
     pipeline = [];
 
-    // Prepare all rays
-    for (let onScreenX = 0; onScreenX < canvas.width; onScreenX++) {
-        let relativeRayAngle = Math.atan((onScreenX - canvas.width / 2) / (canvas.width / 2.14)) * 180 / Math.PI;
+    // Prepare all floor rays
+    // for (let onScreenY = horizon; onScreenY <= canvas.height; onScreenY++) {
+    //     calculateFloorScanLine(onScreenY);
+    // }
 
-        calculateScanLine(relativeRayAngle, onScreenX);
+    // Prepare all wall rays
+    for (let onScreenX = 0; onScreenX <= canvas.width; onScreenX++) {
+        calculateScanLine(onScreenX);
     }
 
     // Prepare all objects
@@ -139,7 +145,62 @@ function updateFrame() {
     }
 }
 
-function calculateScanLine(x, onScreenX) {
+function calculateFloorScanLine(onScreenY) {
+    let relativeRayAngle0 = calculateRelativeRayAngle(0);
+    let relativeRayAngle1 = calculateRelativeRayAngle(canvas.width);
+
+    // Create ray, calculate it's position and direction
+    let ray0 = new Ray(
+        Math.floor(thisPlayer.x),
+        Math.floor(thisPlayer.y),
+        Math.cos((thisPlayer.rotation + relativeRayAngle0) * piRatio),
+        Math.sin((thisPlayer.rotation + relativeRayAngle0) * piRatio)
+    );
+    let ray1 = new Ray(
+        Math.floor(thisPlayer.x),
+        Math.floor(thisPlayer.y),
+        Math.cos((thisPlayer.rotation + relativeRayAngle1) * piRatio),
+        Math.sin((thisPlayer.rotation + relativeRayAngle1) * piRatio)
+    );
+
+    calculateRayDirection(ray0);
+    calculateRayDirection(ray1);
+
+    let p = onScreenY - horizon;
+    let posZ = 0.35 * canvas.height;
+    let rowDistance = posZ / p;
+
+    let floorStepX = rowDistance * (ray1.dirX - ray0.dirX) / canvas.width;
+    let floorStepY = rowDistance * (ray1.dirY - ray0.dirY) / canvas.width;
+
+    let floorX = thisPlayer.x + rowDistance * ray0.dirX;
+    let floorY = thisPlayer.y + rowDistance * ray0.dirY;
+
+    for (let onScreenX = 0; onScreenX <= canvas.width; onScreenX++) {
+        let cellX = Math.floor(floorX);
+        let cellY = Math.floor(floorY);
+
+        if (cellY >= 0 && cellX >= 0 && cellY < world.length && cellX < world[cellY].length && transparentBlocks.includes(world[cellY][cellX])) {
+            let texture = getWallTexture(0);
+
+            let tx = Math.floor(texture.width * (floorX - cellX)) & (texture.width - 1);
+            let ty = Math.floor(texture.height * (floorY - cellY)) & (texture.height - 1);
+
+            let i = Math.floor(canvas.width * onScreenY + onScreenX) * 4;
+            floorData.data[i] = ((Math.floor(onScreenY) % 2) && (Math.floor(onScreenX) % 2)) ? 105 : 200;
+            // floorData.data[i + 1] = 255;
+            // floorData.data[i + 2] = 255;
+            // floorData.data[i + 3] = 255;
+        }
+        
+        floorX += floorStepX;
+        floorY += floorStepY;
+    }
+}
+
+function calculateScanLine(onScreenX) {
+    let x = calculateRelativeRayAngle(onScreenX);
+
     // Create ray, calculate it's position and direction
     let ray = new Ray(
         Math.floor(thisPlayer.x),
@@ -151,6 +212,10 @@ function calculateScanLine(x, onScreenX) {
     calculateRayDirection(ray);
 
     performRaycast(ray, x, onScreenX, 0);
+}
+
+function calculateRelativeRayAngle(onScreenX) {
+    return  Math.atan((onScreenX - canvas.width / 2) / (canvas.width / 2.14)) * 180 / Math.PI;
 }
 
 function calculateRayDirection(ray) {
@@ -183,8 +248,6 @@ function performRaycast(ray, x, onScreenX, layer) {
         // Check if ray is in world bounds
         if (ray.y < 0 || ray.y > world.length - 1) break;
         if (ray.x < 0 || ray.x > world[ray.y].length - 1) break;
-        
-        ray.transparent = false;
 
         // Check if ray has hit a wall
         if (world[ray.y][ray.x] > 0) {
@@ -207,7 +270,6 @@ function performRaycast(ray, x, onScreenX, layer) {
                 if (layer <= maxTransparency) {
                     let skipHit = mergeableBlocks.includes(ray.hit) ? world[ray.y][ray.x] === ray.hit : false;
                     ray.hit = world[ray.y][ray.x];
-                    ray.transparent = true;
                     if (iterations > 1 && !skipHit) rayHit(ray, x, onScreenX);
                     performBackwardsRaycast(ray, x, onScreenX);
                 }
@@ -254,7 +316,6 @@ function performBackwardsRaycast(refRay, x, onScreenX) {
 
     // Check if ray has hit a wall
     if (world[Math.round(ray.y)][Math.round(ray.x)] == ray.hit) return;
-    if (ray.decal && (world[Math.round(ray.y)][Math.round(ray.x)] === 0 || decalBlocks.includes(world[Math.round(ray.y)][Math.round(ray.x)]))) return;
 
     ray = { ...refRay };
 
@@ -275,6 +336,9 @@ function performBackwardsRaycast(refRay, x, onScreenX) {
     if (ray.y < 0 || ray.y > world.length - 1) return;
     if (ray.x < 0 || ray.x > world[Math.round(ray.y)].length - 1) return;
     
+    ray.dirX *= -1;
+    ray.dirY *= -1;
+
     // Check if ray has hit a wall
     if (world[Math.round(ray.y)][Math.round(ray.x)] == ray.hit) {
         rayHit(ray, x, onScreenX);
@@ -309,18 +373,17 @@ function rayHit(ray, x, onScreenX) {
     }
 
     // Calculate height of line to draw on screen
-    let lineHeight = canvas.height / perpWallDist / screenRatio / 4.5 / correction;
+    let lineHeight = canvas.height / perpWallDist / screenRatio / 2.5 / correction;
 
-    //calculate value of wallX
+    // Calculate value of wallX
     if (ray.side === 0) ray.sector = thisPlayer.y + perpWallDist * ray.dirY;
     else ray.sector = thisPlayer.x + perpWallDist * ray.dirX;
     ray.sector -= Math.floor((ray.sector));
 
-    //x coordinate on the texture
+    // X coordinate on the texture
     let textureX = ray.sector;
     if (ray.side === 0 && ray.dirX < 0) textureX = 1 - textureX;
     if (ray.side === 1 && ray.dirY > 0) textureX = 1 - textureX;
-    if (ray.decal) textureX = 1 - textureX;
 
     let decalTexture = -1;
     let decal = decals.filter(function (a) {
@@ -330,7 +393,7 @@ function rayHit(ray, x, onScreenX) {
         decalTexture = decal[0].type;
     }
 
-    let processedRay = new ProcessedRay(x, onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, decalTexture, ray.transparent);
+    let processedRay = new ProcessedRay(onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, decalTexture);
 
     pipeline.push(processedRay);
 }
@@ -340,49 +403,82 @@ function drawFrame() {
         return b.distance - a.distance;
     });
 
+    imageData = context.getImageData(0, 0, canvas.width + 1, canvas.height);
+
     for (let i = 0; i < pipeline.length; i++) {
         let temp = pipeline[i];
         if (temp instanceof ProcessedRay) drawScanLine(temp);
-        else drawObject(temp);
+        // else drawObject(temp);
     }
+
+    context.putImageData(imageData, 0, 0);
 }
 
 function drawScanLine(ray) {
 
     let texture = getWallTexture(ray.textureIndex);
 
-    let cropX = Math.floor(ray.textureX * texture.width);
-    let cropHeight = texture.height;
+    let textureX = Math.floor(ray.textureX * texture.width);
 
-    let x = Math.floor(ray.onScreenX);
-    let y = Math.round(horizon - ray.onScreenSize);
-    let height = Math.floor(ray.onScreenSize * 2);
+    let scanStartY = Math.floor(horizon - ray.onScreenSize / 2);
+    let scanEndY = Math.floor(horizon + ray.onScreenSize / 2);
 
-    context.drawImage(texture, cropX, 0, 1, cropHeight, x, y, 1, height);
+    // Discard offscreen values
+    if (scanStartY < 0) scanStartY = 0;
+    if (scanEndY > canvas.height) scanEndY = canvas.height;
 
-    if (ray.decalIndex >= 0) {
-        let decal = getDecal(ray.decalIndex);
-        let cropX = Math.floor(ray.textureX * decal.width);
-        let cropHeight = decal.height;
-        context.drawImage(decal, cropX, 0, 1, cropHeight, x, y, 1, height);
-    }
+    for (let onScreenY = scanStartY; onScreenY < scanEndY; onScreenY++) {
+        let textureY = Math.ceil(onScreenY - horizon + ray.onScreenSize / 2) / ray.onScreenSize;
 
-    // Apply side tint
-    if (ray.side === 0 && !ray.transparent) {
-        context.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-        context.beginPath();
-        context.moveTo(x + 0.5, y);
-        context.lineTo(x + 0.5, y + height);
-        context.stroke();
-    }
+        // Get imageData array indexes
+        let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + ray.onScreenX) * 4;
+        let textureIndex = Math.floor(texture.width * Math.floor(textureY * texture.height) + textureX) * 4;
 
-    // Apply distance fog
-    if (ray.distance > 5 && !ray.decal) {
-        context.strokeStyle = 'rgba(0, 0, 0, ' + (ray.distance - 5) / drawDistance + ')';
-        context.beginPath();
-        context.moveTo(x + 0.5, y);
-        context.lineTo(x + 0.5, y + height);
-        context.stroke();
+        let finalR = texture.imageData.data[textureIndex];
+        let finalB = texture.imageData.data[textureIndex + 1];
+        let finalG = texture.imageData.data[textureIndex + 2];
+        let finalA = texture.imageData.data[textureIndex + 3];
+
+        // Draw decal if present
+        if (ray.decalIndex >= 0) {
+            let decal = getDecal(ray.decalIndex);
+            let textureX = Math.floor(ray.textureX * decal.width);
+
+            let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
+
+            let alpha = decal.imageData.data[decalIndex + 3] / 255;
+
+            finalR = decal.imageData.data[decalIndex] * alpha + finalR * (1 - alpha);
+            finalG = decal.imageData.data[decalIndex + 1] * alpha + finalG * (1 - alpha);
+            finalB = decal.imageData.data[decalIndex + 2] * alpha + finalB * (1 - alpha);
+            finalA += decal.imageData.data[decalIndex + 3] * alpha;
+            if (finalA > 255) finalA = 255;
+        }
+
+        // Apply side tint
+        if (ray.side === 0) {
+            let tintValue = 1 - tintStrength;
+            finalR *= tintValue;
+            finalG *= tintValue;
+            finalB *= tintValue;
+        }
+
+        // Apply distance fog
+        if (ray.distance > fogStartDistance) {
+            finalR *= ray.distance / fogStartDistance;
+            finalG *= ray.distance / fogStartDistance;
+            finalB *= ray.distance / fogStartDistance;
+        }
+
+        let alpha = finalA / 255;
+        let inverseAlpha = 1 - alpha;
+        finalR = finalR * alpha + imageData.data[canvasIndex] * inverseAlpha;
+        finalG = finalG * alpha + imageData.data[canvasIndex + 1] * inverseAlpha;
+        finalB = finalB * alpha + imageData.data[canvasIndex + 2] * inverseAlpha;
+
+        imageData.data[canvasIndex] = Math.floor(finalR);
+        imageData.data[canvasIndex + 1] = Math.floor(finalG);
+        imageData.data[canvasIndex + 2] = Math.floor(finalB);
     }
 }
 
@@ -433,9 +529,9 @@ function drawObject(object) {
         context.fillStyle = '#ebebeb';
         context.textAlign = 'center';
         context.shadowColor="black";
-        context.shadowBlur=5;
+        context.shadowBlur = 5;
         context.fillText(object.name, spriteScreenX, horizon - 0.15 * spriteHeight);
-        context.shadowBlur=0;
+        context.shadowBlur = 0;
     }
 }
 
@@ -527,6 +623,8 @@ function updatePlayerPosition(deltaTime) {
     // Apply user-produced state updates
     updateUserInput();
 
+    validatePlayerValues();
+
     // Perform collision check
     performCollisionCheck();
 
@@ -556,6 +654,53 @@ function updatePlayerPosition(deltaTime) {
     }
 }
 
+function updateUserInput() {
+    if (currentKeyState.w) {
+        thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin(thisPlayer.rotation * piRatio);
+    }
+    if (currentKeyState.s) {
+        thisPlayer.speedX -= acceleration * Math.cos(thisPlayer.rotation * piRatio);
+        thisPlayer.speedY -= acceleration * Math.sin(thisPlayer.rotation * piRatio);
+    }
+    if (currentKeyState.a) {
+        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation - 90) * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation - 90) * piRatio);
+    }
+    if (currentKeyState.d) {
+        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation + 90) * piRatio);
+        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * piRatio);
+    }
+    if (currentKeyState.leftArrow) {
+        thisPlayer.rotation -= 2;
+    }
+    if (currentKeyState.rightArrow) {
+        thisPlayer.rotation += 2;
+    }
+    if (currentKeyState.upArrow) {
+        horizon += 2;
+    }
+    if (currentKeyState.downArrow) {
+        horizon -= 2;
+    }
+}
+
+function validatePlayerValues() {
+    // Validate rotation
+    if (thisPlayer.rotation < 0) {
+        thisPlayer.rotation += 360;
+    } else if (thisPlayer.rotation >= 360) {
+        thisPlayer.rotation -= 360;
+    }
+
+    // Validate horizon level
+    if (horizon <= canvas.height / 2 - maxHorizonSkew) {
+        horizon = canvas.height / 2 - maxHorizonSkew;
+    } else if (horizon >= canvas.height / 2 + maxHorizonSkew) {
+        horizon = canvas.height / 2 + maxHorizonSkew;
+    }
+}
+
 function performCollisionCheck() {
     // Collision on x
     let nextStep = thisPlayer.x + thisPlayer.speedX * deltaTime;
@@ -577,25 +722,6 @@ function performCollisionCheck() {
     // Positive offset
     if (!nonSolidBlocks.includes(world[Math.floor(nextStep + playerSize)][Math.floor(thisPlayer.x)])) {
         thisPlayer.y -= (nextStep + playerSize) - Math.floor(nextStep + playerSize);
-    }
-}
-
-function updateUserInput() {
-    if (currentKeyState.w) {
-        thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin(thisPlayer.rotation * piRatio);
-    }
-    if (currentKeyState.s) {
-        thisPlayer.speedX -= acceleration * Math.cos(thisPlayer.rotation * piRatio);
-        thisPlayer.speedY -= acceleration * Math.sin(thisPlayer.rotation * piRatio);
-    }
-    if (currentKeyState.a) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation - 90) * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation - 90) * piRatio);
-    }
-    if (currentKeyState.d) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation + 90) * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * piRatio);
     }
 }
 
@@ -622,17 +748,7 @@ function lockChangeAlert() {
 // Get mouse movement and apply it to player rotation
 function cameraMove(e) {
     thisPlayer.rotation += e.movementX / 5;
-    if (thisPlayer.rotation < 0) {
-        thisPlayer.rotation += 360;
-    } else if (thisPlayer.rotation >= 360) {
-        thisPlayer.rotation -= 360;
-    }
     horizon -= e.movementY;
-    if (horizon <= canvas.height / 5) {
-        horizon = canvas.height / 5;
-    } else if (horizon >= canvas.height / 5 * 4) {
-        horizon = canvas.height / 5 * 4;
-    }
 }
 
 // Update keystates on keydown
@@ -643,6 +759,10 @@ document.addEventListener('keydown', e => {
         if (e.keyCode === 65) currentKeyState.a = true;
         if (e.keyCode === 68) currentKeyState.d = true;
         if (e.keyCode === 77) currentKeyState.m = true;
+        if (e.keyCode === 37) currentKeyState.leftArrow = true;
+        if (e.keyCode === 39) currentKeyState.rightArrow = true;
+        if (e.keyCode === 38) currentKeyState.upArrow = true;
+        if (e.keyCode === 40) currentKeyState.downArrow = true;
     }
 });
 
@@ -653,6 +773,10 @@ window.addEventListener('keyup', e => {
     if (e.keyCode === 65) currentKeyState.a = false;
     if (e.keyCode === 68) currentKeyState.d = false;
     if (e.keyCode === 77) currentKeyState.m = false;
+    if (e.keyCode === 37) currentKeyState.leftArrow = false;
+    if (e.keyCode === 39) currentKeyState.rightArrow = false;
+    if (e.keyCode === 38) currentKeyState.upArrow = false;
+    if (e.keyCode === 40) currentKeyState.downArrow = false;
 });
 
 // Recalculate canvas size on window resize

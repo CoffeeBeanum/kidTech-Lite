@@ -1,3 +1,8 @@
+@font-face {
+    font-family: 'Oswald';
+    src: url('resources/fonts/Oswald-VariableFont_wght.ttf')  format('truetype')
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -21,6 +26,10 @@ canvas {
 .debug-label {
     position: absolute;
     top: 10px
+}
+
+#tempCanvas {
+    visibility: hidden;
 }
 
 #info-label {
