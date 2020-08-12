@@ -418,6 +418,9 @@ function drawScanLine(ray) {
 
     let texture = getWallTexture(ray.textureIndex);
 
+    // Stop drawing if texture hasn't loaded yet
+    if (texture === undefined || texture.width === undefined) return;
+
     let textureX = Math.floor(ray.textureX * texture.width);
 
     let scanStartY = Math.floor(horizon - ray.onScreenSize / 2);
@@ -442,17 +445,21 @@ function drawScanLine(ray) {
         // Draw decal if present
         if (ray.decalIndex >= 0) {
             let decal = getDecal(ray.decalIndex);
-            let textureX = Math.floor(ray.textureX * decal.width);
 
-            let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
+            // Don't draw if decal hasn't loaded yet
+            if (decal !== undefined && decal.width !== undefined) {
+                let textureX = Math.floor(ray.textureX * decal.width);
 
-            let alpha = decal.imageData.data[decalIndex + 3] / 255;
+                let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
 
-            finalR = decal.imageData.data[decalIndex] * alpha + finalR * (1 - alpha);
-            finalG = decal.imageData.data[decalIndex + 1] * alpha + finalG * (1 - alpha);
-            finalB = decal.imageData.data[decalIndex + 2] * alpha + finalB * (1 - alpha);
-            finalA += decal.imageData.data[decalIndex + 3] * alpha;
-            if (finalA > 255) finalA = 255;
+                let alpha = decal.imageData.data[decalIndex + 3] / 255;
+
+                finalR = decal.imageData.data[decalIndex] * alpha + finalR * (1 - alpha);
+                finalG = decal.imageData.data[decalIndex + 1] * alpha + finalG * (1 - alpha);
+                finalB = decal.imageData.data[decalIndex + 2] * alpha + finalB * (1 - alpha);
+                finalA += decal.imageData.data[decalIndex + 3] * alpha;
+                if (finalA > 255) finalA = 255;
+            }
         }
 
         // Apply side tint
