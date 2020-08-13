@@ -47,6 +47,7 @@ function Ray(x, y, dirX, dirY) {
     this.stepX = 0; // ray step direction
     this.stepY = 0;
     this.hit = 0; // type of wall ray hit
+    this.backward = false;
     this.done = false;
     this.side = 0; // side of the wall ray hit
     this.sector = 0; // sector of wall ray hit
@@ -94,8 +95,6 @@ let imageData = context.createImageData(canvas.width, canvas.height);
 
 // Drawing funcs
 function drawScene() {
-    prepareFrame();
-
     drawSkybox();
     drawFastFloor();
 
@@ -118,9 +117,9 @@ function prepareFrame() {
     pipeline = [];
 
     // Prepare all floor rays
-    // for (let onScreenY = horizon; onScreenY <= canvas.height; onScreenY++) {
-    //     calculateFloorScanLine(onScreenY);
-    // }
+    for (let onScreenY = horizon; onScreenY <= canvas.height; onScreenY++) {
+        calculateFloorScanLine(onScreenY);
+    }
 
     // Prepare all wall rays
     for (let onScreenX = 0; onScreenX <= canvas.width; onScreenX++) {
@@ -166,12 +165,12 @@ function calculateFloorScanLine(onScreenY) {
     calculateRayDirection(ray0);
     calculateRayDirection(ray1);
 
-    let p = onScreenY - horizon;
-    let posZ = 0.35 * canvas.height;
+    let p = onScreenY - horizon + 1;
+    let posZ = Math.floor(0.325 * canvas.height / screenRatio);
     let rowDistance = posZ / p;
 
-    let floorStepX = rowDistance * (ray1.dirX - ray0.dirX) / canvas.width;
-    let floorStepY = rowDistance * (ray1.dirY - ray0.dirY) / canvas.width;
+    let floorStepX = rowDistance * (ray1.dirX - ray0.dirX) / (canvas.width);
+    let floorStepY = rowDistance * (ray1.dirY - ray0.dirY) / (canvas.width);
 
     let floorX = thisPlayer.x + rowDistance * ray0.dirX;
     let floorY = thisPlayer.y + rowDistance * ray0.dirY;
@@ -181,16 +180,19 @@ function calculateFloorScanLine(onScreenY) {
         let cellY = Math.floor(floorY);
 
         if (cellY >= 0 && cellX >= 0 && cellY < world.length && cellX < world[cellY].length && transparentBlocks.includes(world[cellY][cellX])) {
-            let texture = getWallTexture(0);
+            let texture = getWallTexture(4);
 
-            let tx = Math.floor(texture.width * (floorX - cellX)) & (texture.width - 1);
-            let ty = Math.floor(texture.height * (floorY - cellY)) & (texture.height - 1);
+            if (texture !== undefined && texture.width !== undefined) {
+                let textureX = Math.floor(texture.width * (floorX - cellX)) & (texture.width - 1);
+                let textureY = Math.floor(texture.height * (floorY - cellY)) & (texture.height - 1);
 
-            let i = Math.floor(canvas.width * onScreenY + onScreenX) * 4;
-            floorData.data[i] = ((Math.floor(onScreenY) % 2) && (Math.floor(onScreenX) % 2)) ? 105 : 200;
-            // floorData.data[i + 1] = 255;
-            // floorData.data[i + 2] = 255;
-            // floorData.data[i + 3] = 255;
+                let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + onScreenX) * 4;
+                let textureIndex = Math.floor(texture.width * textureY + textureX) * 4;
+
+                imageData.data[canvasIndex] = texture.data[textureIndex];
+                imageData.data[canvasIndex + 1] = texture.data[textureIndex + 1];
+                imageData.data[canvasIndex + 2] = texture.data[textureIndex + 2];
+            }
         }
         
         floorX += floorStepX;
@@ -323,10 +325,10 @@ function performBackwardsRaycast(refRay, x, onScreenX) {
     ray.dirY *= -1;
 
     if (ray.offX < ray.offY) {
-        ray.x -= ray.stepX * 0.0001;
+        ray.x -= ray.stepX * 0.00001;
         ray.side = 0;
     } else {
-        ray.y -= ray.stepY * 0.0001;
+        ray.y -= ray.stepY * 0.00001;
         ray.side = 1;
     }
 
@@ -335,12 +337,10 @@ function performBackwardsRaycast(refRay, x, onScreenX) {
     // Check if ray is in world bounds
     if (ray.y < 0 || ray.y > world.length - 1) return;
     if (ray.x < 0 || ray.x > world[Math.round(ray.y)].length - 1) return;
-    
-    ray.dirX *= -1;
-    ray.dirY *= -1;
 
     // Check if ray has hit a wall
     if (world[Math.round(ray.y)][Math.round(ray.x)] == ray.hit) {
+        ray.backward = true;
         rayHit(ray, x, onScreenX);
     }
 }
@@ -354,6 +354,12 @@ function rayHit(ray, x, onScreenX) {
     let modifierX = 0, modifierY = 0;
     if (ray.dirX < 0) modifierX = 1;
     if (ray.dirY < 0) modifierY = 1;
+
+    // Reverse ray direction if backwards cast (fixes portal transitions)
+    if (ray.backward) {
+        ray.dirX *= -1;
+        ray.dirY *= -1;
+    }
 
     if (jumps === 0) {
         if (ray.side === 0) perpWallDist = (ray.x - thisPlayer.x + (1 - ray.stepX) / 2) / ray.dirX;
@@ -373,7 +379,7 @@ function rayHit(ray, x, onScreenX) {
     }
 
     // Calculate height of line to draw on screen
-    let lineHeight = canvas.height / perpWallDist / screenRatio / 2.5 / correction;
+    let lineHeight = canvas.height / perpWallDist / screenRatio / 2.25 / correction;
 
     // Calculate value of wallX
     if (ray.side === 0) ray.sector = thisPlayer.y + perpWallDist * ray.dirY;
@@ -399,11 +405,13 @@ function rayHit(ray, x, onScreenX) {
 }
 
 function drawFrame() {
+    imageData = context.getImageData(0, 0, canvas.width + 1, canvas.height);
+
+    prepareFrame();
+
     pipeline.sort(function (a, b) {
         return b.distance - a.distance;
     });
-
-    imageData = context.getImageData(0, 0, canvas.width + 1, canvas.height);
 
     for (let i = 0; i < pipeline.length; i++) {
         let temp = pipeline[i];
@@ -437,10 +445,10 @@ function drawScanLine(ray) {
         let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + ray.onScreenX) * 4;
         let textureIndex = Math.floor(texture.width * Math.floor(textureY * texture.height) + textureX) * 4;
 
-        let finalR = texture.imageData.data[textureIndex];
-        let finalB = texture.imageData.data[textureIndex + 1];
-        let finalG = texture.imageData.data[textureIndex + 2];
-        let finalA = texture.imageData.data[textureIndex + 3];
+        let finalR = texture.data[textureIndex];
+        let finalB = texture.data[textureIndex + 1];
+        let finalG = texture.data[textureIndex + 2];
+        let finalA = texture.data[textureIndex + 3];
 
         // Draw decal if present
         if (ray.decalIndex >= 0) {
@@ -452,12 +460,12 @@ function drawScanLine(ray) {
 
                 let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
 
-                let alpha = decal.imageData.data[decalIndex + 3] / 255;
+                let alpha = decal.data[decalIndex + 3] / 255;
 
-                finalR = decal.imageData.data[decalIndex] * alpha + finalR * (1 - alpha);
-                finalG = decal.imageData.data[decalIndex + 1] * alpha + finalG * (1 - alpha);
-                finalB = decal.imageData.data[decalIndex + 2] * alpha + finalB * (1 - alpha);
-                finalA += decal.imageData.data[decalIndex + 3] * alpha;
+                finalR = decal.data[decalIndex] * alpha + finalR * (1 - alpha);
+                finalG = decal.data[decalIndex + 1] * alpha + finalG * (1 - alpha);
+                finalB = decal.data[decalIndex + 2] * alpha + finalB * (1 - alpha);
+                finalA += decal.data[decalIndex + 3] * alpha;
                 if (finalA > 255) finalA = 255;
             }
         }

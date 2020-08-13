@@ -3,7 +3,8 @@ const textureNames = [
     'resources/textures/walls/error.png',
     'resources/textures/walls/brick_wall.png',
     'resources/textures/walls/metal_arch.png',
-    'resources/textures/walls/metal_window.png'
+    'resources/textures/walls/metal_window.png',
+    'resources/textures/walls/concrete.png'
 ];
 
 const decalNames = [
@@ -91,8 +92,8 @@ const tempContext = tempCanvas.getContext("2d", { alpha: true });
 let skybox = new Image();
 skybox.src = "resources/skybox.jpg";
 
-function Texture(imageData, width, height) {
-    this.imageData = imageData;
+function Texture(data, width, height) {
+    this.data = data;
     this.width = width;
     this.height = height;
 }
@@ -113,7 +114,7 @@ for (let i = 0; i < textureNames.length; i++) {
 
         let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
 
-        let texture = new Texture(imageData, tempImage.width, tempImage.height);
+        let texture = new Texture(imageData.data, imageData.width, imageData.height);
 
         textures[index] = texture;
     }
@@ -140,7 +141,7 @@ for (let i = 0; i < decalNames.length; i++) {
 
         let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
 
-        let texture = new Texture(imageData, tempImage.width, tempImage.height);
+        let texture = new Texture(imageData.data, imageData.width, imageData.height);
 
         decals[index] = texture;
     }
