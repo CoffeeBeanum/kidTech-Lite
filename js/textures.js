@@ -105,8 +105,6 @@ for (let i = 0; i < textureNames.length; i++) {
     let tempImage = new Image();
     tempImage.src = textureNames[i];
 
-    let index = i;
-
     tempImage.onload = function() {
         tempCanvas.width = tempImage.width;
         tempCanvas.height = tempImage.height;
@@ -116,11 +114,11 @@ for (let i = 0; i < textureNames.length; i++) {
 
         let texture = new Texture(imageData.data, imageData.width, imageData.height);
 
-        textures[index] = texture;
+        textures[i] = texture;
     }
 }
 
-function getWallTexture(index) {
+function getTexture(index) {
     if (index > textures.length - 1) { index = 0; }
     return textures[index];
 }
@@ -131,8 +129,6 @@ let decals = [];
 for (let i = 0; i < decalNames.length; i++) {
     let tempImage = new Image();
     tempImage.src = decalNames[i];
-
-    let index = i;
     
     tempImage.onload = function() {
         tempCanvas.width = tempImage.width;
@@ -143,7 +139,7 @@ for (let i = 0; i < decalNames.length; i++) {
 
         let texture = new Texture(imageData.data, imageData.width, imageData.height);
 
-        decals[index] = texture;
+        decals[i] = texture;
     }
 }
 
@@ -156,13 +152,25 @@ function getDecal(index) {
 let sprites = [];
 
 for (let i = 0; i < spriteNames.length; i++) {
-    let tempList = [];
+
     for (let index = 0; index < spriteNames[i].length; index++) {
-        let temp = new Image();
-        temp.src = spriteNames[i][index];
-        tempList.push(temp);
+        let tempImage = new Image();
+        tempImage.src = spriteNames[i][index];
+        
+        sprites[i] = [];
+
+        tempImage.onload = function() {
+            tempCanvas.width = tempImage.width;
+            tempCanvas.height = tempImage.height;
+            tempContext.drawImage(tempImage, 0, 0);
+
+            let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+
+            let texture = new Texture(imageData.data, imageData.width, imageData.height);
+
+            sprites[i][index] = texture;
+        }
     }
-    sprites.push(tempList);
 }
 
 function getSprite(index) {
