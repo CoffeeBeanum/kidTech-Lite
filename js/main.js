@@ -52,9 +52,10 @@ function Ray(x, y, dirX, dirY) {
     this.side = 0; // side of the wall ray hit
     this.sector = 0; // sector of wall ray hit
     this.coordJumps = [];
+    this.lighting = 0;
 }
 
-function ProcessedRay(onScreenX, textureIndex, textureX, side, distance, onScreenSize, decalIndex) {
+function ProcessedRay(onScreenX, textureIndex, textureX, side, distance, onScreenSize, decalIndex, lighting) {
     this.onScreenX = onScreenX; // onscreen position
     this.textureIndex = textureIndex; // texture index
     this.textureX = textureX; // position on texture
@@ -62,6 +63,7 @@ function ProcessedRay(onScreenX, textureIndex, textureX, side, distance, onScree
     this.distance = distance; // ray length
     this.onScreenSize = onScreenSize; // ray size on screen
     this.decalIndex = decalIndex;
+    this.lighting = lighting;
 }
 
 // Key states
@@ -175,19 +177,21 @@ function drawFloorScanLine(onScreenY) {
         let offsetX = floorX - cellX;
         let offsetY = floorY - cellY;
 
-        if (cellY >= 0 && cellX >= 0) {
+        if (cellY >= 0 && cellX >= 0 && cellY < world.height && cellX < world.width) {
+            let lighting = world.lightmap[cellY][cellX];
+
             // Draw floor
-            if (onScreenY > horizon && cellY < world.height && cellX < world.width && world.floor[cellY][cellX] > 0) {
+            if (onScreenY > horizon && world.floor[cellY][cellX] > 0) {
                 let texture = getTexture(world.floor[cellY][cellX]);
 
-                if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY);
+                if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, lighting);
             }
 
             // Draw ceiling
-            if (onScreenY < horizon && cellY < world.height && cellX < world.width && world.ceiling[cellY][cellX] > 0) {
+            if (onScreenY < horizon && world.ceiling[cellY][cellX] > 0) {
                 let texture = getTexture(world.ceiling[cellY][cellX]);
                 
-                if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY);
+                if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, lighting);
             }
         }
         
@@ -196,7 +200,7 @@ function drawFloorScanLine(onScreenY) {
     }
 }
 
-function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY) {
+function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, lighting) {
     let textureX = Math.floor(texture.width * offsetX) & (texture.width - 1);
     let textureY = Math.floor(texture.height * offsetY) & (texture.height - 1);
 
@@ -212,6 +216,12 @@ function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY) {
         
     // Don't draw if resulting alpha is 0
     if (alpha > 0) {
+        // Apply lighting
+        let lightingFactor = lighting / 9;
+        finalR *= lightingFactor;
+        finalG *= lightingFactor;
+        finalB *= lightingFactor;
+
         // Don't blend if alpha is 1
         if (alpha < 1) {
             let inverseAlpha = 1 - alpha;
@@ -307,6 +317,7 @@ function performRaycast(ray, x, onScreenX, layer) {
         if (ray.x < 0 || ray.x > world.width - 1) break;
 
         let wall = world.walls[ray.y][ray.x];
+        let lighting = world.lightmap[ray.y][ray.x];
 
         // Check if ray has hit a wall
         if (wall > 0) {
@@ -329,11 +340,13 @@ function performRaycast(ray, x, onScreenX, layer) {
                 if (layer <= maxTransparency) {
                     let skipHit = mergeableBlocks.includes(ray.hit) ? wall === ray.hit : false;
                     ray.hit = wall;
+                    ray.lighting = lighting;
                     if (iterations > 1 && !skipHit) rayHit(ray, x, onScreenX);
                     performBackwardsRaycast(ray, x, onScreenX);
                 }
             } else {
                 ray.hit = wall;
+                ray.lighting = lighting;
                 rayHit(ray, x, onScreenX);
                 ray.done = true;
             }
@@ -456,7 +469,7 @@ function rayHit(ray, x, onScreenX) {
         decalTexture = decal[0].type;
     }
 
-    let processedRay = new ProcessedRay(onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, decalTexture);
+    let processedRay = new ProcessedRay(onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, decalTexture, ray.lighting);
 
     buffer.push(processedRay);
 }
@@ -523,20 +536,26 @@ function drawScanLine(ray) {
         
         // Don't draw if resulting alpha is 0
         if (alpha > 0) {
-            // Apply side tint
-            if (ray.side === 0) {
-                let tintValue = 1 - tintStrength;
-                finalR *= tintValue;
-                finalG *= tintValue;
-                finalB *= tintValue;
-            }
+            // // Apply side tint
+            // if (ray.side === 0) {
+            //     let tintValue = 1 - tintStrength;
+            //     finalR *= tintValue;
+            //     finalG *= tintValue;
+            //     finalB *= tintValue;
+            // }
 
-            // Apply distance fog
-            if (ray.distance > fogStartDistance) {
-                finalR *= ray.distance / fogStartDistance;
-                finalG *= ray.distance / fogStartDistance;
-                finalB *= ray.distance / fogStartDistance;
-            }
+            // // Apply distance fog
+            // if (ray.distance > fogStartDistance) {
+            //     finalR *= ray.distance / fogStartDistance;
+            //     finalG *= ray.distance / fogStartDistance;
+            //     finalB *= ray.distance / fogStartDistance;
+            // }
+
+            // Apply lighting
+            let lightingFactor = ray.lighting / 9;
+            finalR *= lightingFactor;
+            finalG *= lightingFactor;
+            finalB *= lightingFactor;
 
             // Don't blend if resulting alpha is 1
             if (alpha < 1) {
