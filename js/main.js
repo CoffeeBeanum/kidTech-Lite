@@ -101,7 +101,7 @@ function drawScene() {
 
     drawFrame();
     
-    if (currentKeyState.m) drawMiniMap();
+    // if (currentKeyState.m) drawMiniMap();
 }
 
 function drawSkybox() {
