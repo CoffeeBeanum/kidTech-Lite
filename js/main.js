@@ -592,6 +592,8 @@ function drawObject(object) {
 
     let onScreenHeight = Math.floor(canvas.height / transformY / screenRatio / 2.1);
 
+    let lighting = world.lightmap[Math.floor(object.y)][Math.floor(object.x)];
+
     if (object.type >= 0) {
         let spriteGroup = getSprite(object.type);
         let sprite = spriteGroup[0];
@@ -637,18 +639,26 @@ function drawObject(object) {
                     
                     // Don't draw if resulting alpha is 0
                     if (alpha > 0) {
-                        // Apply distance fog
-                        if (object.distance > fogStartDistance) {
-                            finalR *= object.distance / fogStartDistance;
-                            finalG *= object.distance / fogStartDistance;
-                            finalB *= object.distance / fogStartDistance;
-                        }
+                        // // Apply distance fog
+                        // if (object.distance > fogStartDistance) {
+                        //     finalR *= object.distance / fogStartDistance;
+                        //     finalG *= object.distance / fogStartDistance;
+                        //     finalB *= object.distance / fogStartDistance;
+                        // }
 
-                        let inverseAlpha = 1 - alpha;
+                        let lightingFactor = lighting / 9;
+                        finalR *= lightingFactor;
+                        finalG *= lightingFactor;
+                        finalB *= lightingFactor;
 
-                        finalR = finalR * alpha + frame.data[canvasIndex] * inverseAlpha;
-                        finalG = finalG * alpha + frame.data[canvasIndex + 1] * inverseAlpha;
-                        finalB = finalB * alpha + frame.data[canvasIndex + 2] * inverseAlpha;
+                        // Don't blend if resulting alpha is 1
+                        if (alpha < 1) {
+                            let inverseAlpha = 1 - alpha;
+
+                            finalR = finalR * alpha + frame.data[canvasIndex] * inverseAlpha;
+                            finalG = finalG * alpha + frame.data[canvasIndex + 1] * inverseAlpha;
+                            finalB = finalB * alpha + frame.data[canvasIndex + 2] * inverseAlpha;
+                        }   
 
                         frame.data[canvasIndex] = Math.floor(finalR);
                         frame.data[canvasIndex + 1] = Math.floor(finalG);
