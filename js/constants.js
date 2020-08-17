@@ -1,9 +1,9 @@
-const DEBUG_SOUND = 'resources/sounds/server_message.wav';
+var DEBUG_SOUND = 'resources/sounds/server_message.wav';
 
-const piRatio = Math.PI / 180;
+var piRatio = Math.PI / 180;
 
 // Preset default world
-const world = {
+var world = {
     'walls': [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         [1,1,0,0,0,0,1,0,0,5,5,0,0,0,0,0,5,5,0,0,1,2,2,2,2,2,1],
@@ -91,7 +91,7 @@ const world = {
 world.width = world.walls[0].length;
 world.height = world.walls.length;
 
-const decals = [
+var decals = [
     {"type":2,"x":1,"y":1},
     {"type":1,"x":1,"y":2},
     {"type":0,"x":1,"y":3},
@@ -113,7 +113,7 @@ const decals = [
     {"type":8,"x":1,"y":16}
 ];
 
-const objects = [
+var objects = [
     //Sprites
     {"name":"Doom guy","x":2.5,"y":15.5,"rotation":0,"type":0},
     {"name":"Nazi dude","x":2.5,"y":14.5,"rotation":0,"type":1},
@@ -124,7 +124,7 @@ const objects = [
     {"name":"Sneaky engie","x":21.5,"y":5.5,"rotation":315,"type":6},
 ];
 
-const portals = [
+var portals = [
     [{"x":20,"y":24},{"x":19,"y":34}],
     [{"x":18,"y":34},{"x":19,"y":24}],
     [{"x":9,"y":37},{"x":14,"y":37}],
