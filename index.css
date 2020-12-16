@@ -32,8 +32,18 @@ canvas {
     visibility: hidden;
 }
 
+#uiCanvas {
+    pointer-events: none;
+}
+
 #info-label {
     left: 10px;
+}
+
+#changelog-label {
+    top: 50px;
+    left: 10px;
+    font-size: 14px;
 }
 
 #fps-label {
