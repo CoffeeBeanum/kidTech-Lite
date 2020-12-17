@@ -1,5 +1,5 @@
 import { world, faceToVertices, piRatio } from './constants.js'
-import { context, canvas, uiContext, uiCanvas, uiScaleFactor, debugSound, debugLabel, changelogLabel, drawDistance, tintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor } from './startSettings.js'
+import { context, canvas, uiContext, uiCanvas, uiScaleFactor, debugLabel, changelogLabel, drawDistance, fogTintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize } from './startSettings.js'
 
 // System lets
 let frameStart;
@@ -23,16 +23,16 @@ function Player() {
 let thisPlayer = new Player();
 
 // Game object
-function GameObject(name, x, y, rotation, type, solid) {
-    this.name = name;
-    this.x = x;
-    this.y = y;
-    this.rotation = rotation;
-    this.type = type;
-    this.solid = solid;
-    this.distance = 0;
-    this.relativeAngle = 0;
-}
+// function GameObject(name, x, y, rotation, type, solid) {
+//     this.name = name;
+//     this.x = x;
+//     this.y = y;
+//     this.rotation = rotation;
+//     this.type = type;
+//     this.solid = solid;
+//     this.distance = 0;
+//     this.relativeAngle = 0;
+// }
 
 // Ray object
 function Ray(x, y, dirX, dirY) {
@@ -56,14 +56,13 @@ function Ray(x, y, dirX, dirY) {
     this.face = 0;
 }
 
-function ProcessedRay(onScreenX, cell, textureX, side, distance, onScreenSize, decalIndex, face) {
+function ProcessedRay(onScreenX, cell, textureX, side, distance, onScreenSize, face) {
     this.onScreenX = onScreenX; // onscreen position
     this.cell = cell; // texture index
     this.textureX = textureX; // position on texture
     this.side = side; // side of the wall ray hit
     this.distance = distance; // ray length
     this.onScreenSize = onScreenSize; // ray size on screen
-    this.decalIndex = decalIndex;
     this.face = face;
 }
 
@@ -317,7 +316,7 @@ function calculateScanLine(onScreenX) {
 }
 
 function calculateRelativeRayAngle(onScreenX) {
-    return  Math.atan((onScreenX - canvas.width / 2) / (canvas.width / 2.14)) * 180 / Math.PI;
+    return Math.atan((onScreenX - canvas.width / 2) / (canvas.width / 2.14)) * 180 / Math.PI;
 }
 
 function calculateRayDirection(ray) {
@@ -494,21 +493,7 @@ function rayHit(ray, x, onScreenX) {
     if (ray.side === 1 && ray.dirY > 0) textureX = 1 - textureX;
     if (ray.backward) textureX = 1 - textureX;
 
-    // Get decal on wall
-    let decalTexture = -1;
-
-    // Calculate decal direction if applicable
-    if (ray.hit.decals.length > 0) {
-        if (ray.hit.decals[0].face !== undefined) {
-            if (ray.hit.decals[0].face === ray.face) {
-                decalTexture = ray.hit.decals[0].type;
-            }
-        } else {
-            decalTexture = ray.hit.decals[0].type;
-        }
-    }
-
-    let processedRay = new ProcessedRay(onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, decalTexture, ray.face);
+    let processedRay = new ProcessedRay(onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, ray.face);
 
     buffer.push(processedRay);
 }
@@ -542,31 +527,36 @@ function drawScanLine(ray) {
         let finalA = texture.data[textureIndex + 3];
 
         // Draw decal if present
-        if (ray.decalIndex >= 0) {
-            let decal = getDecal(ray.decalIndex);
+        if (ray.cell.decals.length >= 0) {
+            for (let i = 0; i < ray.cell.decals.length; i++) {
+                let decalObject = ray.cell.decals[i];
+                if (decalObject.face === undefined || decalObject.face === ray.face) {
+                    let decal = getDecal(ray.cell.decals[i].type);
 
-            // Don't draw if decal hasn't loaded yet
-            if (decal !== undefined && decal.width !== undefined) {
-                let textureX = Math.floor(ray.textureX * decal.width);
+                    // Don't draw if decal hasn't loaded yet
+                    if (decal !== undefined && decal.width !== undefined) {
+                        let textureX = Math.floor(ray.textureX * decal.width);
 
-                let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
+                        let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
 
-                let alpha = decal.data[decalIndex + 3] / 255;
+                        let alpha = decal.data[decalIndex + 3] / 255;
 
-                // Don't blend if resulting alpha is 1
-                if (alpha < 1) {
-                    let inverseAlpha = 1 - alpha;
+                        // Don't blend if resulting alpha is 1
+                        if (alpha < 1) {
+                            let inverseAlpha = 1 - alpha;
 
-                    finalR = decal.data[decalIndex] * alpha + finalR * inverseAlpha;
-                    finalG = decal.data[decalIndex + 1] * alpha + finalG * inverseAlpha;
-                    finalB = decal.data[decalIndex + 2] * alpha + finalB * inverseAlpha;
-                    finalA += decal.data[decalIndex + 3] * alpha;
-                    if (finalA > 255) finalA = 255;
-                } else {
-                    finalR = decal.data[decalIndex];
-                    finalG = decal.data[decalIndex + 1];
-                    finalB = decal.data[decalIndex + 2];
-                    finalA = 255;
+                            finalR = decal.data[decalIndex] * alpha + finalR * inverseAlpha;
+                            finalG = decal.data[decalIndex + 1] * alpha + finalG * inverseAlpha;
+                            finalB = decal.data[decalIndex + 2] * alpha + finalB * inverseAlpha;
+                            finalA += decal.data[decalIndex + 3] * alpha;
+                            if (finalA > 255) finalA = 255;
+                        } else {
+                            finalR = decal.data[decalIndex];
+                            finalG = decal.data[decalIndex + 1];
+                            finalB = decal.data[decalIndex + 2];
+                            finalA = 255;
+                        }
+                    }
                 }
             }
         }
@@ -835,21 +825,24 @@ function updatePlayerPosition(deltaTime) {
 }
 
 function updateUserInput() {
+    let playerRotationRadians = thisPlayer.rotation * piRatio;
+    let playerRotationLeftRadians = (thisPlayer.rotation - 90) * piRatio;
+    let playerRotationRightRadians = (thisPlayer.rotation + 90) * piRatio;
     if (currentKeyState.w) {
-        thisPlayer.speedX += acceleration * Math.cos(thisPlayer.rotation * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin(thisPlayer.rotation * piRatio);
+        thisPlayer.speedX += acceleration * Math.cos(playerRotationRadians);
+        thisPlayer.speedY += acceleration * Math.sin(playerRotationRadians);
     }
     if (currentKeyState.s) {
-        thisPlayer.speedX -= acceleration * Math.cos(thisPlayer.rotation * piRatio);
-        thisPlayer.speedY -= acceleration * Math.sin(thisPlayer.rotation * piRatio);
+        thisPlayer.speedX -= acceleration * Math.cos(playerRotationRadians);
+        thisPlayer.speedY -= acceleration * Math.sin(playerRotationRadians);
     }
     if (currentKeyState.a) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation - 90) * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation - 90) * piRatio);
+        thisPlayer.speedX += acceleration * Math.cos(playerRotationLeftRadians);
+        thisPlayer.speedY += acceleration * Math.sin(playerRotationLeftRadians);
     }
     if (currentKeyState.d) {
-        thisPlayer.speedX += acceleration * Math.cos((thisPlayer.rotation + 90) * piRatio);
-        thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * piRatio);
+        thisPlayer.speedX += acceleration * Math.cos(playerRotationRightRadians);
+        thisPlayer.speedY += acceleration * Math.sin(playerRotationRightRadians);
     }
     if (currentKeyState.leftArrow) {
         thisPlayer.rotation -= 0.15 * deltaTime;
@@ -885,6 +878,10 @@ function validatePlayerValues() {
         canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvas.height / 2) / 10}deg)`;
         // canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvas.height / 2) / 10}deg) scale(${Math.abs((canvas.height / 2) / 1000) + 1})`;
     }
+
+    Howler.pos(thisPlayer.x, -0.5, thisPlayer.y);
+    let playerRotationRadians = thisPlayer.rotation * piRatio;
+    Howler.orientation(Math.cos(playerRotationRadians), 0, Math.sin(playerRotationRadians), 0, 1, 0);
 }
 
 function performCollisionCheck() {
@@ -911,6 +908,10 @@ function performCollisionCheck() {
     }
 }
 
+// Objects
+function updateObjects() {
+}
+
 // Controls
 // Lock pointer on click
 canvas.onclick = function () {
@@ -928,7 +929,7 @@ function lockChangeAlert() {
         document.addEventListener("mousemove", cameraMove, false);
     } else {
         console.log('The pointer lock status is now unlocked');
-        document.exitFullscreen();
+        // document.exitFullscreen();
         document.removeEventListener("mousemove", cameraMove, false);
     }
 }
@@ -1010,6 +1011,8 @@ function renderLoop() {
     frameStart = performance.now();
 
     if (gameState >= 0) {
+        updateObjects();
+
         updatePlayerPosition(deltaTime);
 
         drawScene();

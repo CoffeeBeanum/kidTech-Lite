@@ -48,7 +48,7 @@ var presetWorld = {
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,0,5,0,3,3,3,3,2,3,3,3,3,0,5,0,4,4,4,4,4,0],
-        [0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,4,4,0],
+        [0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0],
         [0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0],
@@ -67,6 +67,7 @@ var presetWorld = {
     'lightmap': [],
     'decals': [
         {'type':7,'x':3,'y':0}, // alpha-test
+        {'type':3,'x':3,'y':0}, // warning
         {'type':2,'x':1,'y':1}, // art-engie
         {'type':1,'x':1,'y':2}, // art-vobla
         {'type':0,'x':1,'y':3}, // art-landscape
@@ -76,6 +77,7 @@ var presetWorld = {
         {'type':7,'x':10,'y':2}, // alpha-test
         {'type':2,'x':21,'y':8}, // art-engie
         {'type':5,'x':22,'y':10,'face':3}, // lag-room
+        {'type':9,'x':23,'y':0,'face':3},
         // metal-plates
         {'type':4,'x':1,'y':5},
         {'type':4,'x':6,'y':2},
@@ -105,7 +107,9 @@ var presetWorld = {
         {'name':'Engineer TF2','x':2.5,'y':11.5,'rotation':0,'type':6},
         {'name':'Cat','x':2.5,'y':10.5,'rotation':0,'type':5},
         {'name':'','x':24.7,'y':7.7,'rotation':225,'type':6},
-        {'name':'','x':21.5,'y':5.5,'rotation':315,'type':4}
+        {'name':'','x':21.5,'y':5.5,'rotation':315,'type':4},
+        {'name':'','x':9.5,'y':13.5,'rotation':0,'sound':{'name':'vague_voices', 'volume': 0.4}},
+        {'name':'','x':23.5,'y':1,'rotation':0,'sound':{'name':'radio_creepy', 'volume': 0.1, 'rolloffFactor': 2.5}}
     ],
     'portals': [
         [{'x':20,'y':24},{'x':19,'y':34}],
@@ -131,12 +135,49 @@ var presetWorld = {
         {'intensity':{'r':0,'g':0,'b':1.5},'x':9,'y':12,'face':1},
         {'intensity':{'r':0,'g':1.5,'b':0},'x':10,'y':13,'face':2},
         {'intensity':{'r':1,'g':0,'b':0},'x':23,'y':0,'face':3}
+    ],
+    'music': [
+        {'name':'vague_voices', 'x':23.5,'y':1},
+        {'name':'radio_creepy', 'x':5.5,'y':3.5},
     ]
+}
+
+var Sound = function() {
+    // Setup the shared Howl.
+    this.sound = new Howl({
+        src: ['resources/sounds/sprite.mp3'],
+        sprite: {
+          vague_voices: [0, 131814, true],
+          radio_creepy: [132814, 39789, true]
+        }
+    });
+};
+
+Sound.prototype = {
+    speaker: function(x, y, sprite, volume = 1, rolloffFactor = 1) {
+        let soundId = world.audio.sound.play(sprite);
+        if (soundId !== undefined) {
+            this.sound.once('play', function() {
+                // Set the position of the speaker in 3D space.
+                this.sound.pos(x, -0.3, y, soundId);
+                this.sound.volume(volume, soundId);
+    
+                // Tweak the attributes to get the desired effect.
+                this.sound.pannerAttr({
+                    panningModel: 'HRTF',
+                    refDistance: 1,
+                    rolloffFactor: rolloffFactor,
+                    distanceModel: 'exponential'
+                }, soundId);
+            }.bind(this), soundId);
+        }
+    }   
 }
 
 var world = {
     'cells': [],
     'objects': [],
+    'audio': new Sound(),
     'width': 0,
     'height': 0
 }
@@ -206,6 +247,13 @@ function initializeWorld() {
     }
 
     world.objects = presetWorld.objects;
+
+    for (let i = 0; i < world.objects.length; i++) {
+        let object = world.objects[i];
+        if (object.sound !== undefined && object.sound.name !== undefined) {
+            world.audio.speaker(object.x, object.y, object.sound.name, object.sound.volume, object.sound.rolloffFactor);
+        }
+    }
 }
 
 const maxLightRefineIterations = 10;

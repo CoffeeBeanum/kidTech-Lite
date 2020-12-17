@@ -17,7 +17,8 @@ const decalNames = [
     'resources/textures/decals/lag_room.png',
     'resources/textures/decals/epic_decals.png',
     'resources/textures/decals/test_alpha.png',
-    'resources/textures/decals/lamp.png'
+    'resources/textures/decals/lamp.png',
+    'resources/textures/decals/old_intercom.png'
 ];
 
 const spriteNames = [

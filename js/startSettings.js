@@ -14,11 +14,6 @@ uiCanvas.width = canvas.width * uiScaleFactor;
 const uiContext = uiCanvas.getContext("2d");
 uiContext.lineWidth = 1;
 
-// Sound
-const debugSound = new Audio(DEBUG_SOUND);
-
-debugSound.volume = 0.2;
-
 //Labels
 const debugLabel = document.getElementById("fps-label");
 const changelogLabel = document.getElementById("changelog-label");
@@ -26,18 +21,15 @@ const changelogLabel = document.getElementById("changelog-label");
 // Rendering settings
 const drawDistance = 50;
 
-const tintStrength = 0.4;
-
+const fogTintStrength = 0.4;
 const fogStartDistance = 20;
 
 const maxHorizonSkew = 120;
 
 // Minimap settings
-
 const minimapOffset = 50;
 const minimapCellSize = 4;
 const minimapObjectSize = 1.5;
 const minimapFovSize = 15;
-const minimapFloorColor = 'lightgrey';
 
-export { canvas, context, uiCanvas, uiContext, uiScaleFactor, debugSound, debugLabel, changelogLabel, drawDistance, tintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor }
+export { canvas, context, uiCanvas, uiContext, uiScaleFactor, debugLabel, changelogLabel, drawDistance, fogTintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize }
