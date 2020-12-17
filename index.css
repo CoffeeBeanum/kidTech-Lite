@@ -11,6 +11,8 @@
 body, html {
     height: 100%;
     font-family: 'Oswald', sans-serif;
+    overflow: hidden;
+    background-color: black;
 }
 
 canvas {
@@ -23,7 +25,7 @@ canvas {
     image-rendering: pixelated; /* Firefox */
 }
 
-.debug-label {
+.info-label {
     position: absolute;
     top: 10px
 }
@@ -50,7 +52,7 @@ canvas {
     right: 10px;
 }
 
-#debug-label-container {
+#info-label-container {
     position: absolute;
     right: 0;
     top: 0;

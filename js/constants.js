@@ -6,7 +6,7 @@ var piRatio = Math.PI / 180;
 var presetWorld = {
     'walls': [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,1,0,0,0,0,1,0,0,5,5,0,0,0,0,0,5,5,0,0,1,2,2,2,2,2,1],
+        [1,1,0,0,0,0,1,0,0,2,2,0,0,0,0,0,2,2,0,0,1,2,2,2,2,2,1],
         [1,1,0,0,0,0,1,0,1,3,3,3,3,2,3,3,3,3,1,0,1,2,2,2,2,2,1],
         [1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2,2,2,2,1],
         [1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2,2,2,2,1],
@@ -14,7 +14,7 @@ var presetWorld = {
         [1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,1,1,1],
         [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0],
         [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,1,0],
-        [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0],
+        [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,1,1,0],
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
         [0,3,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
@@ -48,7 +48,7 @@ var presetWorld = {
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,0,5,0,3,3,3,3,2,3,3,3,3,0,5,0,4,4,4,4,4,0],
-        [0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0],
+        [0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,4,4,0],
         [0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0],
         [0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0],
@@ -66,38 +66,46 @@ var presetWorld = {
     ],
     'lightmap': [],
     'decals': [
-        {'type':2,'x':1,'y':1},
-        {'type':1,'x':1,'y':2},
-        {'type':0,'x':1,'y':3},
-        {'type':6,'x':1,'y':4},
+        {'type':7,'x':3,'y':0}, // alpha-test
+        {'type':2,'x':1,'y':1}, // art-engie
+        {'type':1,'x':1,'y':2}, // art-vobla
+        {'type':0,'x':1,'y':3}, // art-landscape
+        {'type':6,'x':1,'y':4}, // epic_decals
+        {'type':3,'x':11,'y':2}, // warning
+        {'type':3,'x':15,'y':2}, // warning
+        {'type':7,'x':10,'y':2}, // alpha-test
+        {'type':2,'x':21,'y':8}, // art-engie
+        {'type':5,'x':22,'y':10,'face':3}, // lag-room
+        // metal-plates
         {'type':4,'x':1,'y':5},
-        {'type':3,'x':11,'y':2},
-        {'type':3,'x':15,'y':2},
-        {'type':7,'x':10,'y':2},
-        {'type':2,'x':21,'y':8},
         {'type':4,'x':6,'y':2},
         {'type':4,'x':8,'y':2},
         {'type':4,'x':18,'y':2},
         {'type':4,'x':20,'y':10},
-        {'type':5,'x':23,'y':8},
-        {'type':7,'x':3,'y':0},
-        // Lights
+        // lamps
         {'type':8,'x':2,'y':0,'face':3},
         {'type':8,'x':5,'y':0,'face':3},
+        {'type':8,'x':1,'y':8,'face':2},
+        {'type':8,'x':6,'y':1,'face':2},
+        {'type':8,'x':20,'y':1,'face':0},
+        {'type':8,'x':13,'y':2,'face':3},
         {'type':8,'x':20,'y':6,'face':0},
-        {'type':8,'x':19,'y':17,'face':1},
         {'type':8,'x':1,'y':16,'face':2},
-        {'type':8,'x':20,'y':13,'face':0},
-        {'type':8,'x':9,'y':12,'face':1}
+        {'type':8,'x':20,'y':13,'face':2},
+        {'type':8,'x':8,'y':13,'face':0},
+        {'type':8,'x':9,'y':12,'face':1},
+        {'type':8,'x':10,'y':13,'face':2},
+        {'type':8,'x':23,'y':0,'face':3}
     ],
     'objects': [
         {'name':'Doom guy','x':2.5,'y':15.5,'rotation':0,'type':0},
         {'name':'Nazi dude','x':2.5,'y':14.5,'rotation':0,'type':1},
         {'name':'Orman Ablo','x':2.5,'y':13.5,'rotation':0,'type':2},
         {'name':'The Famous Shpee','x':2.5,'y':12.5,'rotation':0,'type':3},
-        {'name':'Blood ghoul','x':2.5,'y':11.5,'rotation':0,'type':4},
+        {'name':'Engineer TF2','x':2.5,'y':11.5,'rotation':0,'type':6},
         {'name':'Cat','x':2.5,'y':10.5,'rotation':0,'type':5},
-        {'name':'','x':21.5,'y':5.5,'rotation':315,'type':6},
+        {'name':'','x':24.7,'y':7.7,'rotation':225,'type':6},
+        {'name':'','x':21.5,'y':5.5,'rotation':315,'type':4}
     ],
     'portals': [
         [{'x':20,'y':24},{'x':19,'y':34}],
@@ -110,13 +118,19 @@ var presetWorld = {
         [{'x':16,'y':1},{'x':11,'y':1}]
     ],
     'lights': [
-        {'intensity':1,'x':2,'y':0,'face':3},
-        {'intensity':1,'x':5,'y':0,'face':3},
-        {'intensity':1,'x':20,'y':6,'face':0},
-        {'intensity':1,'x':19,'y':17,'face':1},
-        {'intensity':1,'x':1,'y':16,'face':2},
-        {'intensity':1,'x':20,'y':13,'face':0},
-        {'intensity':1,'x':9,'y':12,'face':1}
+        {'intensity':{'r':0,'g':0,'b':1.5},'x':2,'y':0,'face':3},
+        {'intensity':{'r':1.5,'g':0,'b':0},'x':5,'y':0,'face':3},
+        {'intensity':{'r':1,'g':1,'b':1},'x':1,'y':8,'face':2},
+        {'intensity':{'r':0.4,'g':0,'b':0.4},'x':6,'y':1,'face':2},
+        {'intensity':{'r':0.4,'g':0,'b':0.4},'x':20,'y':1,'face':0},
+        {'intensity':{'r':1,'g':0,'b':1},'x':13,'y':2,'face':3},
+        {'intensity':{'r':0.4,'g':0.4,'b':0.4},'x':20,'y':6,'face':0},
+        {'intensity':{'r':0.5,'g':1,'b':0.5},'x':1,'y':16,'face':2},
+        // {'intensity':{'r':1,'g':0,'b':0},'x':20,'y':13,'face':2},
+        {'intensity':{'r':1.5,'g':0,'b':0},'x':8,'y':13,'face':0},
+        {'intensity':{'r':0,'g':0,'b':1.5},'x':9,'y':12,'face':1},
+        {'intensity':{'r':0,'g':1.5,'b':0},'x':10,'y':13,'face':2},
+        {'intensity':{'r':1,'g':0,'b':0},'x':23,'y':0,'face':3}
     ]
 }
 
@@ -181,12 +195,11 @@ function initializeWorld() {
                 1: getPresetLightmapCell(x+1, y),
                 2: getPresetLightmapCell(x+1, y+1),
                 3: getPresetLightmapCell(x,   y+1),
-                'average': 0,
+                'average': {'r':0,'g':0,'b':0},
                 'uniform': true
             };
-        
-            cell.lightmap.average = (cell.lightmap[0] + cell.lightmap[1] + cell.lightmap[2] + cell.lightmap[3]) / 4;
-            cell.lightmap.uniform = (cell.lightmap[0] === cell.lightmap[1] && cell.lightmap[0] === cell.lightmap[2] && cell.lightmap[0] === cell.lightmap[3]);
+
+            calculateAverageLightmap(cell.lightmap);
 
             setWorldCell(x, y, cell);
         }
@@ -198,14 +211,27 @@ function initializeWorld() {
 const maxLightRefineIterations = 10;
 const lightCellFalloff = 0.7;
 const lightDiagonalFalloffFactor = 0.8;
-const ambientLightLevel = 0;
+const baseLightLevel = {'r':0,'g':0,'b':0};
+const ambientLightLevel = {'r':0.1,'g':0.1,'b':0.15};
 let tempLightmap = [];
 
 function simulateLightPropagation() {
     const lightmapHeight = presetWorld.walls.length + 1;
     const lightmapWidth = presetWorld.walls[0].length + 1;
 
-    presetWorld.lightmap = Array(lightmapHeight * lightmapWidth).fill(ambientLightLevel);
+    presetWorld.lightmap = Array(lightmapHeight * lightmapWidth).fill(baseLightLevel);
+
+    for (let y = 0; y < world.height; y++) {
+        for (let x = 0; x < world.width; x++) {
+            let cell = getWorldCell(x, y);
+            if (cell.transparent && cell.ceiling === 0) {
+                setPresetLightmapCell(x,   y,   ambientLightLevel);
+                setPresetLightmapCell(x+1, y,   ambientLightLevel);
+                setPresetLightmapCell(x+1, y+1, ambientLightLevel);
+                setPresetLightmapCell(x,   y+1, ambientLightLevel);
+            }
+        }
+    }
 
     for (let i = 0; i < presetWorld.lights.length; i++) {
         let light = presetWorld.lights[i];
@@ -222,72 +248,49 @@ function simulateLightPropagation() {
     }
 
     for (let i = 0; i < maxLightRefineIterations; i++) {
-        tempLightmap = { ...presetWorld.lightmap };
+        tempLightmap = JSON.parse(JSON.stringify(presetWorld.lightmap));
     
         for (let y = 0; y < lightmapHeight; y++) {
             for (let x = 0; x < lightmapWidth; x++) {
-                let lightmapCell = getPresetLightmapCell(x, y);
+                let lightmapCell = { ...getPresetLightmapCell(x, y) };
     
-                if (lightmapCell <= ambientLightLevel) continue;
+                if (lightmapCell.r <= ambientLightLevel.r && lightmapCell.g <= ambientLightLevel.g && lightmapCell.b <= ambientLightLevel.b) continue;
 
                 if (x - 1 >= 0 && x < world.width && y - 1 >= 0 && y < world.height) {
-                    let directIntensity =  lightmapCell * lightCellFalloff;
-                    let diagonalIntensity =  lightmapCell * lightCellFalloff * lightDiagonalFalloffFactor;
-
                     // Direct propagation
+                    lightmapCell.r *= lightCellFalloff;
+                    lightmapCell.g *= lightCellFalloff;
+                    lightmapCell.b *= lightCellFalloff;
 
                     // Up
-                    if (getWorldCell(x - 1, y - 1).transparent || getWorldCell(x, y - 1).transparent) {
-                        if (getPresetLightmapCell(x, y - 1) < directIntensity) setTempLightmapCell(x, y - 1, directIntensity);
-                    }
+                    if (getWorldCell(x - 1, y - 1).transparent || getWorldCell(x, y - 1).transparent) updateLightingCell(x, y - 1, lightmapCell);
 
                     // Left
-                    if (getWorldCell(x - 1, y - 1).transparent || getWorldCell(x - 1, y).transparent) {
-                        if (getPresetLightmapCell(x - 1, y) < directIntensity) setTempLightmapCell(x - 1, y, directIntensity);
-                    }
+                    if (getWorldCell(x - 1, y - 1).transparent || getWorldCell(x - 1, y).transparent) updateLightingCell(x - 1, y, lightmapCell);
 
                     // Right
-                    if (getWorldCell(x, y - 1).transparent || getWorldCell(x, y).transparent) {
-                        if (getPresetLightmapCell(x + 1, y) < directIntensity) setTempLightmapCell(x + 1, y, directIntensity);
-                    }
+                    if (getWorldCell(x, y - 1).transparent || getWorldCell(x, y).transparent) updateLightingCell(x + 1, y, lightmapCell);
 
                     // Down
-                    if (getWorldCell(x - 1, y).transparent || getWorldCell(x, y).transparent) {
-                        if (getPresetLightmapCell(x, y + 1) < directIntensity) setTempLightmapCell(x, y + 1, directIntensity);
-                    }
+                    if (getWorldCell(x - 1, y).transparent || getWorldCell(x, y).transparent) updateLightingCell(x, y + 1, lightmapCell);
 
                     // Diagonal propagation
+                    lightmapCell.r *= lightDiagonalFalloffFactor;
+                    lightmapCell.g *= lightDiagonalFalloffFactor;
+                    lightmapCell.b *= lightDiagonalFalloffFactor;
 
                     // Left-Up
-                    if (getWorldCell(x - 1, y - 1).transparent && (getWorldCell(x - 1, y).transparent || getWorldCell(x, y - 1).transparent)) {
-                        if (getPresetLightmapCell(x - 1, y - 1) < diagonalIntensity) setTempLightmapCell(x - 1, y - 1, diagonalIntensity);
-                    }
+                    if (getWorldCell(x - 1, y - 1).transparent && (getWorldCell(x - 1, y).transparent || getWorldCell(x, y - 1).transparent)) updateLightingCell(x - 1, y - 1, lightmapCell);
 
                     // Right-Up
-                    if (getWorldCell(x, y - 1).transparent && (getWorldCell(x, y).transparent || getWorldCell(x - 1, y - 1).transparent)) {
-                        if (getPresetLightmapCell(x + 1, y - 1) < diagonalIntensity) setTempLightmapCell(x + 1, y - 1, diagonalIntensity);
-                    }
+                    if (getWorldCell(x, y - 1).transparent && (getWorldCell(x, y).transparent || getWorldCell(x - 1, y - 1).transparent)) updateLightingCell(x + 1, y - 1, lightmapCell);
 
                     // Left-Down
-                    if (getWorldCell(x - 1, y).transparent && (getWorldCell(x - 1, y - 1).transparent || getWorldCell(x, y).transparent)) {
-                        if (getPresetLightmapCell(x - 1, y + 1) < diagonalIntensity) setTempLightmapCell(x - 1, y + 1, diagonalIntensity);
-                    }
+                    if (getWorldCell(x - 1, y).transparent && (getWorldCell(x - 1, y - 1).transparent || getWorldCell(x, y).transparent)) updateLightingCell(x - 1, y - 1, lightmapCell);
 
                     // Right-Down
-                    if (getWorldCell(x, y).transparent && (getWorldCell(x, y - 1).transparent || getWorldCell(x - 1, y).transparent)) {
-                        if (getPresetLightmapCell(x + 1, y + 1) < diagonalIntensity) setTempLightmapCell(x + 1, y + 1, diagonalIntensity);
-                    }
+                    if (getWorldCell(x, y).transparent && (getWorldCell(x, y - 1).transparent || getWorldCell(x - 1, y).transparent)) updateLightingCell(x + 1, y + 1, lightmapCell);
                 }
-
-                // for (var offY = -1; offY <= 1; offY++) {
-                //     for (var offX = -1; offX <= 1; offX++) {
-                //         if (offX === 0 && offY === 0) continue;
-                //         if (y + offY < 0 || y + offY > lightmapHeight-1) continue;
-                //         if (x + offX < 0 || x + offX > lightmapWidth-1) continue;
-
-
-                //     }
-                // }
             }
         }
     
@@ -315,20 +318,33 @@ function setPresetLightmapCell(x, y, value) {
     presetWorld.lightmap[y * presetWorld.walls[0].length + x] = value;
 }
 
-function getTempLightmapCell(x, y) {
-    return tempLightmap[y * presetWorld.walls[0].length + x];
-}
-
-function setTempLightmapCell(x, y, value) {
-    tempLightmap[y * presetWorld.walls[0].length + x] = value;
-}
-
 function getWorldCell(x, y) {
     return world.cells[y * world.width + x];
 }
 
 function setWorldCell(x, y, cell) {
     world.cells[y * world.width + x] = cell;
+}
+
+function calculateAverageLightmap(lightmap) {
+    lightmap.average.r = (lightmap[0].r + lightmap[1].r + lightmap[2].r + lightmap[3].r) / 4;
+    lightmap.average.g = (lightmap[0].g + lightmap[1].g + lightmap[2].g + lightmap[3].g) / 4;
+    lightmap.average.b = (lightmap[0].b + lightmap[1].b + lightmap[2].b + lightmap[3].b) / 4;
+
+    lightmap.uniform = (
+        (lightmap[0].r === lightmap[1].r && lightmap[1].r === lightmap[2].r && lightmap[2].r === lightmap[3].r) &&
+        (lightmap[0].g === lightmap[1].g && lightmap[1].g === lightmap[2].g && lightmap[2].g === lightmap[3].g) &&
+        (lightmap[0].b === lightmap[1].b && lightmap[1].b === lightmap[2].b && lightmap[2].b === lightmap[3].b)
+    );
+}
+
+function updateLightingCell(x, y, value) {
+    let referenceCell = getPresetLightmapCell(x, y);
+    let cell = tempLightmap[(y) * presetWorld.walls[0].length + x];
+
+    if (referenceCell.r < value.r) cell.r = value.r;
+    if (referenceCell.g < value.g) cell.g = value.g;
+    if (referenceCell.b < value.b) cell.b = value.b;
 }
 
 export { world, faceToVertices, DEBUG_SOUND, piRatio }

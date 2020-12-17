@@ -1,5 +1,5 @@
 import { world, faceToVertices, piRatio } from './constants.js'
-import { context, canvas, uiContext, uiCanvas, uiScaleFactor, debugSound, fpsLabel, drawDistance, tintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor } from './startSettings.js'
+import { context, canvas, uiContext, uiCanvas, uiScaleFactor, debugSound, debugLabel, changelogLabel, drawDistance, tintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize, minimapFloorColor } from './startSettings.js'
 
 // System lets
 let frameStart;
@@ -78,6 +78,8 @@ function KeyState() {
     this.rightArrow = false;
     this.upArrow = false;
     this.downArrow = false;
+    this.info = true;
+    this.perspective = false;
 }
 
 let currentKeyState = new KeyState();
@@ -222,21 +224,38 @@ function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell) {
     // Don't draw if resulting alpha is 0
     if (alpha > 0) {
         // Apply lighting
-        let lightingFactor = 1;
+
         if (cell.lightmap.uniform) {
-            lightingFactor = cell.lightmap.average;
-        } else {
-            lightingFactor = (
-                cell.lightmap[0] * (1 - offsetX) * (1 - offsetY) +
-                cell.lightmap[1] * offsetX * (1 - offsetY) +
-                cell.lightmap[2] * offsetX * offsetY +
-                cell.lightmap[3] * (1 - offsetX) * offsetY
+            finalR *= cell.lightmap.average.r;
+            finalG *= cell.lightmap.average.g;
+            finalB *= cell.lightmap.average.b;
+        }else {
+            let inverseOffsetX = (1 - offsetX);
+            let inverseOffsetY = (1 - offsetY);
+            let offsetiXiY = inverseOffsetX * inverseOffsetY;
+            let offsetXiY = offsetX * inverseOffsetY;
+            let offsetXY = offsetX * offsetY;
+            let offsetiXY = inverseOffsetX * offsetY;
+
+            finalR *= (
+                cell.lightmap[0].r * offsetiXiY +
+                cell.lightmap[1].r * offsetXiY +
+                cell.lightmap[2].r * offsetXY +
+                cell.lightmap[3].r * offsetiXY
+            );
+            finalG *= (
+                cell.lightmap[0].g * offsetiXiY +
+                cell.lightmap[1].g * offsetXiY +
+                cell.lightmap[2].g * offsetXY +
+                cell.lightmap[3].g * offsetiXY
+            );
+            finalB *= (
+                cell.lightmap[0].b * offsetiXiY +
+                cell.lightmap[1].b * offsetXiY +
+                cell.lightmap[2].b * offsetXY +
+                cell.lightmap[3].b * offsetiXY
             );
         }
-
-        finalR *= lightingFactor;
-        finalG *= lightingFactor;
-        finalB *= lightingFactor;
 
         // Don't blend if alpha is 1
         if (alpha < 1) {
@@ -566,16 +585,17 @@ function drawScanLine(ray) {
             // Apply lighting
             let faceVertices = faceToVertices(ray.face);
 
-            let lightingFactor = 1;
             if (ray.cell.lightmap.uniform) {
-                lightingFactor = ray.cell.lightmap.average;
-            }else {
-                lightingFactor = ray.cell.lightmap[faceVertices[0]] * ray.textureX + ray.cell.lightmap[faceVertices[1]] * (1 - ray.textureX);
-            }
+                finalR *= ray.cell.lightmap.average.r;
+                finalG *= ray.cell.lightmap.average.g;
+                finalB *= ray.cell.lightmap.average.b;
+            } else {
+                let inverseTextureX = (1 - ray.textureX);
 
-            finalR *= lightingFactor;
-            finalG *= lightingFactor;
-            finalB *= lightingFactor;
+                finalR *= ray.cell.lightmap[faceVertices[0]].r * ray.textureX + ray.cell.lightmap[faceVertices[1]].r * inverseTextureX;
+                finalG *= ray.cell.lightmap[faceVertices[0]].g * ray.textureX + ray.cell.lightmap[faceVertices[1]].g * inverseTextureX;
+                finalB *= ray.cell.lightmap[faceVertices[0]].b * ray.textureX + ray.cell.lightmap[faceVertices[1]].b * inverseTextureX;
+            }
 
             // Don't blend if resulting alpha is 1
             if (alpha < 1) {
@@ -667,10 +687,9 @@ function drawObject(object) {
                         // }
 
                         // Apply lighting
-                        let lightingFactor = lightmap.average;
-                        finalR *= lightingFactor;
-                        finalG *= lightingFactor;
-                        finalB *= lightingFactor;
+                        finalR *= lightmap.average.r;
+                        finalG *= lightmap.average.g;
+                        finalB *= lightmap.average.b;
 
                         // Don't blend if resulting alpha is 1
                         if (alpha < 1) {
@@ -833,16 +852,16 @@ function updateUserInput() {
         thisPlayer.speedY += acceleration * Math.sin((thisPlayer.rotation + 90) * piRatio);
     }
     if (currentKeyState.leftArrow) {
-        thisPlayer.rotation -= 2;
+        thisPlayer.rotation -= 0.15 * deltaTime;
     }
     if (currentKeyState.rightArrow) {
-        thisPlayer.rotation += 2;
+        thisPlayer.rotation += 0.15 * deltaTime;
     }
     if (currentKeyState.upArrow) {
-        horizon += 2;
+        horizon += 0.15 * deltaTime;
     }
     if (currentKeyState.downArrow) {
-        horizon -= 2;
+        horizon -= 0.15 * deltaTime;
     }
 }
 
@@ -859,6 +878,12 @@ function validatePlayerValues() {
         horizon = canvas.height / 2 - maxHorizonSkew;
     } else if (horizon >= canvas.height / 2 + maxHorizonSkew) {
         horizon = canvas.height / 2 + maxHorizonSkew;
+    }
+
+    // Perspective distortion compensation
+    if (currentKeyState.perspective) {
+        canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvas.height / 2) / 10}deg)`;
+        // canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvas.height / 2) / 10}deg) scale(${Math.abs((canvas.height / 2) / 1000) + 1})`;
     }
 }
 
@@ -899,9 +924,11 @@ document.addEventListener('pointerlockchange', lockChangeAlert, false);
 function lockChangeAlert() {
     if (document.pointerLockElement === canvas && gameState === 1) {
         console.log('The pointer lock status is now locked');
+        document.body.requestFullscreen();
         document.addEventListener("mousemove", cameraMove, false);
     } else {
         console.log('The pointer lock status is now unlocked');
+        document.exitFullscreen();
         document.removeEventListener("mousemove", cameraMove, false);
     }
 }
@@ -924,6 +951,20 @@ document.addEventListener('keydown', e => {
         if (e.keyCode === 39) currentKeyState.rightArrow = true;
         if (e.keyCode === 38) currentKeyState.upArrow = true;
         if (e.keyCode === 40) currentKeyState.downArrow = true;
+        if (e.keyCode === 80) {
+            currentKeyState.perspective = !currentKeyState.perspective;
+            if (!currentKeyState.perspective) canvas.style.transform = '';
+        }
+        if (e.keyCode === 73) {
+            currentKeyState.info = !currentKeyState.info;
+            if (currentKeyState.info) {
+                changelogLabel.style.visibility = "visible";
+                debugLabel.style.visibility = "visible";
+            } else {
+                changelogLabel.style.visibility = "hidden";
+                debugLabel.style.visibility = "hidden";
+            }
+        }
     }
 });
 
@@ -954,9 +995,11 @@ window.onresize = function() {
 window.onresize();
 
 function updateFps() {
-    fpsLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>
+    debugLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>
     Frametime: ${(frameEnd - frameStart).toFixed(2)}ms<br>
-    Resolution: ${canvas.width}x${canvas.height}`;
+    Resolution: ${canvas.width}x${canvas.height}<br>
+    Position: ${thisPlayer.x.toFixed(1)} ${thisPlayer.y.toFixed(1)}<br>
+    ${currentKeyState.perspective ? '<br>PERSPECTIVE FIX' : ''}`;
 }
 
 function renderLoop() {

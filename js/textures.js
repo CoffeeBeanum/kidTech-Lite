@@ -91,7 +91,7 @@ const spriteNames = [
 const tempCanvas = document.getElementById("tempCanvas");
 const tempContext = tempCanvas.getContext("2d", { alpha: true });
 
-var skybox = new Image();
+const skybox = new Image();
 skybox.src = "resources/skybox_night.jpg";
 
 function Texture(data, width, height) {
