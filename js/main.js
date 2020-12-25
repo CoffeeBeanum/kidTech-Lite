@@ -1,5 +1,15 @@
-import { world, faceToVertices, piRatio } from './constants.js'
-import { context, canvas, uiContext, uiCanvas, uiScaleFactor, debugLabel, changelogLabel, drawDistance, fogTintStrength, fogStartDistance, maxHorizonSkew, minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize } from './startSettings.js'
+import { piRatio, radians90Deg } from './constants.js'
+import { world, faceToVertices } from './world.js'
+import { 
+    context, canvas, uiContext, uiCanvas, labelContext, labelCanvas, uiScaleFactor, 
+    debugLabel, secondaryInfoContainer, 
+    drawDistance, maxHorizonSkew, 
+    minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize,
+    playerMaxSpeed, playerAcceleration, playerFriction, playerSize, playerInteractionRange,
+    viewModelSizeRatio, viewModelBobAmplitude, viewModelBobSpeed, viewModelLightFactor,
+    cameraMouseSensitivity, cameraArrowsSensitivity, fovFactor
+} from './gameSettings.js'
+import { tintImage } from './utils/tint.js'
 
 // System lets
 let frameStart;
@@ -7,9 +17,15 @@ let frameEnd;
 
 let currentTime;
 let deltaTime;
-let lastTime = Date.now();
+let lastTime = performance.now();
 
-let gameState = 1;
+let animationFrameCounter = performance.now();
+
+let performanceProbe = 0;
+
+let gameState = 0;
+
+let slowLoad = false;
 
 // Player object
 function Player() {
@@ -18,6 +34,7 @@ function Player() {
     this.rotation = 150;
     this.speedX = 0;
     this.speedY = 0;
+    this.currentWeapon = null;
 }
 
 let thisPlayer = new Player();
@@ -52,7 +69,6 @@ function Ray(x, y, dirX, dirY) {
     this.side = 0; // side of the wall ray hit
     this.sector = 0; // sector of wall ray hit
     this.coordJumps = [];
-    this.lighting = 0;
     this.face = 0;
 }
 
@@ -67,21 +83,28 @@ function ProcessedRay(onScreenX, cell, textureX, side, distance, onScreenSize, f
 }
 
 // Key states
-function KeyState() {
-    this.w = false;
-    this.a = false;
-    this.s = false;
-    this.d = false;
-    this.m = false;
-    this.leftArrow = false;
-    this.rightArrow = false;
-    this.upArrow = false;
-    this.downArrow = false;
+function ControlState() {
+    this.moveForward = false;
+    this.moveLeft = false;
+    this.moveBackward = false;
+    this.moveRight = false;
+    this.showMap = false;
+    this.turnLeft = false;
+    this.turnRight = false;
+    this.lookUp = false;
+    this.lookDown = false;
+    this.use = false;
+    this.useCooldown = false;
+    this.shoot = false;
+    this.shootCooldown = false;
     this.info = true;
     this.perspective = false;
+    this.noclip = false;
+    this.viewModel = {'texture': getViewModel(0), 'bobFactor': 0, 'bobCounter': 0};
+    this.viewModelTinting = true;
 }
 
-let currentKeyState = new KeyState();
+let currentControlState = new ControlState();
 
 // Drawing lets
 function Point(x, y) {
@@ -93,12 +116,17 @@ let buffer;
 
 let screenRatio = canvas.height / canvas.width;
 
-let horizon = canvas.height / 2;
+let canvasHalfHeight = canvas.height / 2;
+let canvasHalfWidth = canvas.width / 2;
+let horizon = canvasHalfHeight;
+
+let uiCanvasHalfWidth = uiCanvas.width / 2;
 
 let frame = context.createImageData(canvas.width, canvas.height);
 
 // Drawing funcs
 function drawScene() {
+    labelContext.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
     uiContext.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
     drawSkybox();
@@ -109,8 +137,15 @@ function drawScene() {
 }
 
 function drawSkybox() {
-    context.drawImage(skybox, Math.floor(-canvas.width / 360 * thisPlayer.rotation * 2), Math.floor(-maxHorizonSkew + horizon - canvas.height / 2), canvas.width * 2, canvas.height + maxHorizonSkew * 2);
-    context.drawImage(skybox, Math.floor(canvas.width * 2 - canvas.width / 360 * thisPlayer.rotation * 2), Math.floor(-maxHorizonSkew + horizon - canvas.height / 2), canvas.width * 2, canvas.height + maxHorizonSkew * 2);
+    const canvasWidthFactor = canvas.width / 360;
+    const playerRotationFactor = thisPlayer.rotation * 2;
+    const skyboxWidthFactor = canvasWidthFactor * playerRotationFactor;
+    const canvasDoubleWidth = canvas.width * 2;
+    const horizonLowerLimit = canvas.height + maxHorizonSkew * 2;
+    const horizonUpperLimit = Math.floor(-maxHorizonSkew + horizon - canvasHalfHeight);
+
+    context.drawImage(skybox, Math.floor(-skyboxWidthFactor),                    horizonUpperLimit, canvasDoubleWidth, horizonLowerLimit);
+    context.drawImage(skybox, Math.floor(canvasDoubleWidth - skyboxWidthFactor), horizonUpperLimit, canvasDoubleWidth, horizonLowerLimit);
 }
 
 function drawFrame() {
@@ -185,9 +220,15 @@ function drawFloorScanLine(onScreenY) {
 
             // Draw floor
             let cell = getWorldCell(cellX, cellY);
+
             let floor = cell.floor
             if (onScreenY > horizon && floor > 0) {
-                let texture = getTexture(floor);
+                let textureFrames = getTexture(floor);
+
+                let textureFrame = 0;
+                if (textureFrames.frames > 1) textureFrame = Math.floor(animationFrameCounter * textureFrames.speed) % textureFrames.frames;
+
+                let texture = textureFrames[textureFrame];
 
                 if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell);
             }
@@ -195,7 +236,12 @@ function drawFloorScanLine(onScreenY) {
             // Draw ceiling
             let ceiling = cell.ceiling
             if (onScreenY < horizon && ceiling > 0) {
-                let texture = getTexture(ceiling);
+                let textureFrames = getTexture(ceiling);
+
+                let textureFrame = 0;
+                if (textureFrames.frames > 1) textureFrame = Math.floor(animationFrameCounter * textureFrames.speed) % textureFrames.frames;
+
+                let texture = textureFrames[textureFrame];
                 
                 if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell);
             }
@@ -207,8 +253,8 @@ function drawFloorScanLine(onScreenY) {
 }
 
 function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell) {
-    let textureX = Math.floor(texture.width * offsetX) & (texture.width - 1);
-    let textureY = Math.floor(texture.height * offsetY) & (texture.height - 1);
+    let textureX = Math.floor(texture.width * offsetX);
+    let textureY = Math.floor(texture.height * offsetY);
 
     let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + onScreenX) * 4;
     let textureIndex = Math.floor(texture.width * textureY + textureX) * 4;
@@ -223,36 +269,40 @@ function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell) {
     // Don't draw if resulting alpha is 0
     if (alpha > 0) {
         // Apply lighting
-
         if (cell.lightmap.uniform) {
             finalR *= cell.lightmap.average.r;
             finalG *= cell.lightmap.average.g;
             finalB *= cell.lightmap.average.b;
-        }else {
+        } else {
             let inverseOffsetX = (1 - offsetX);
             let inverseOffsetY = (1 - offsetY);
             let offsetiXiY = inverseOffsetX * inverseOffsetY;
             let offsetXiY = offsetX * inverseOffsetY;
             let offsetXY = offsetX * offsetY;
             let offsetiXY = inverseOffsetX * offsetY;
+            
+            let lightmap0 = cell.lightmap[0];
+            let lightmap1 = cell.lightmap[1];
+            let lightmap2 = cell.lightmap[2];
+            let lightmap3 = cell.lightmap[3];
 
             finalR *= (
-                cell.lightmap[0].r * offsetiXiY +
-                cell.lightmap[1].r * offsetXiY +
-                cell.lightmap[2].r * offsetXY +
-                cell.lightmap[3].r * offsetiXY
+                lightmap0.r * offsetiXiY +
+                lightmap1.r * offsetXiY +
+                lightmap2.r * offsetXY +
+                lightmap3.r * offsetiXY
             );
             finalG *= (
-                cell.lightmap[0].g * offsetiXiY +
-                cell.lightmap[1].g * offsetXiY +
-                cell.lightmap[2].g * offsetXY +
-                cell.lightmap[3].g * offsetiXY
+                lightmap0.g * offsetiXiY +
+                lightmap1.g * offsetXiY +
+                lightmap2.g * offsetXY +
+                lightmap3.g * offsetiXY
             );
             finalB *= (
-                cell.lightmap[0].b * offsetiXiY +
-                cell.lightmap[1].b * offsetXiY +
-                cell.lightmap[2].b * offsetXY +
-                cell.lightmap[3].b * offsetiXY
+                lightmap0.b * offsetiXiY +
+                lightmap1.b * offsetXiY +
+                lightmap2.b * offsetXY +
+                lightmap3.b * offsetiXY
             );
         }
 
@@ -316,7 +366,7 @@ function calculateScanLine(onScreenX) {
 }
 
 function calculateRelativeRayAngle(onScreenX) {
-    return Math.atan((onScreenX - canvas.width / 2) / (canvas.width / 2.14)) * 180 / Math.PI;
+    return Math.atan((onScreenX - canvasHalfWidth) / (canvas.width / fovFactor)) * 180 / Math.PI;
 }
 
 function calculateRayDirection(ray) {
@@ -347,8 +397,8 @@ function performRaycast(ray, x, onScreenX) {
         iterations++;
 
         // Check if ray is in world bounds
-        if (ray.y < 0 || ray.y > world.height - 1) break;
-        if (ray.x < 0 || ray.x > world.width - 1) break;
+        if (ray.y < 0 || ray.y >= world.height) break;
+        if (ray.x < 0 || ray.x >= world.width) break;
 
         let cell = getWorldCell(ray.x, ray.y);
 
@@ -417,13 +467,8 @@ function performBackwardsRaycast(refRay, x, onScreenX) {
     ray.dirX *= -1;
     ray.dirY *= -1;
 
-    if (ray.offX < ray.offY) {
-        ray.x -= ray.stepX * 0.00001;
-        ray.side = 0;
-    } else {
-        ray.y -= ray.stepY * 0.00001;
-        ray.side = 1;
-    }
+    if (ray.offX < ray.offY) ray.side = 0;
+    else                     ray.side = 1;
 
     calculateRayDirection(ray);
     
@@ -458,6 +503,9 @@ function rayHit(ray, x, onScreenX) {
 
     // Reverse ray direction if backwards cast (fixes portal transitions)
     if (ray.backward) {
+        ray.x += ray.stepX * 0.00001;
+        ray.y += ray.stepY * 0.00001;
+
         ray.dirX *= -1;
         ray.dirY *= -1;
     }
@@ -482,40 +530,47 @@ function rayHit(ray, x, onScreenX) {
     // Calculate height of line to draw on screen
     let lineHeight = canvas.height / perpWallDist / screenRatio / 2.25 / correction;
 
-    // Calculate value of wallX
-    if (ray.side === 0) ray.sector = thisPlayer.y + perpWallDist * ray.dirY;
-    else ray.sector = thisPlayer.x + perpWallDist * ray.dirX;
-    ray.sector -= Math.floor((ray.sector));
+    if (lineHeight > 0) {
+        // Calculate value of wallX
+        if (ray.side === 0) ray.sector = thisPlayer.y + perpWallDist * ray.dirY;
+        else ray.sector = thisPlayer.x + perpWallDist * ray.dirX;
+        ray.sector -= Math.floor((ray.sector));
 
-    // X coordinate on the texture
-    let textureX = ray.sector;
-    if (ray.side === 0 && ray.dirX < 0) textureX = 1 - textureX;
-    if (ray.side === 1 && ray.dirY > 0) textureX = 1 - textureX;
-    if (ray.backward) textureX = 1 - textureX;
+        // X coordinate on the texture
+        let textureX = ray.sector;
+        if (ray.side === 0 && ray.dirX < 0) textureX = 1 - textureX;
+        if (ray.side === 1 && ray.dirY > 0) textureX = 1 - textureX;
+        if (ray.backward) textureX = 1 - textureX;
 
-    let processedRay = new ProcessedRay(onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, ray.face);
+        let processedRay = new ProcessedRay(onScreenX, ray.hit, textureX, ray.side, Math.abs(perpWallDist), lineHeight, ray.face);
 
-    buffer.push(processedRay);
+        buffer.push(processedRay);
+    }
 }
 
 function drawScanLine(ray) {
 
-    let texture = getTexture(ray.cell.wall);
+    let textureFrames = getTexture(ray.cell.wall);
 
-    // Stop drawing if texture hasn't loaded yet
-    if (texture === undefined || texture.width === undefined) return;
+    let textureFrame = 0;
+
+    if (textureFrames.frames > 1) textureFrame = Math.floor(animationFrameCounter * textureFrames.speed) % textureFrames.frames;
+
+    let texture = textureFrames[textureFrame];
 
     let textureX = Math.floor(ray.textureX * texture.width);
 
-    let scanStartY = Math.floor(horizon - ray.onScreenSize / 2);
-    let scanEndY = Math.floor(horizon + ray.onScreenSize / 2);
+    let halfScreenSize = ray.onScreenSize / 2;
+
+    let scanStartY = Math.floor(horizon - halfScreenSize);
+    let scanEndY = Math.floor(horizon + halfScreenSize);
 
     // Discard offscreen values
     if (scanStartY < 0) scanStartY = 0;
     if (scanEndY > canvas.height) scanEndY = canvas.height;
 
     for (let onScreenY = scanStartY; onScreenY < scanEndY; onScreenY++) {
-        let textureY = Math.ceil(onScreenY - horizon + ray.onScreenSize / 2) / ray.onScreenSize;
+        let textureY = Math.ceil(onScreenY - horizon + halfScreenSize) / ray.onScreenSize;
 
         // Get imageData array indexes
         let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + ray.onScreenX) * 4;
@@ -539,38 +594,42 @@ function drawScanLine(ray) {
 
                         let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
 
-                        let alpha = decal.data[decalIndex + 3] / 255;
+                        let decalA = decal.data[decalIndex + 3];
 
-                        // Don't blend if resulting alpha is 1
-                        if (alpha < 1) {
-                            let inverseAlpha = 1 - alpha;
+                        // Don't draw if invisible
+                        if (decalA > 0) {
+                            
+                            let decalR = decal.data[decalIndex];
+                            let decalG = decal.data[decalIndex + 1];
+                            let decalB = decal.data[decalIndex + 2];
 
-                            finalR = decal.data[decalIndex] * alpha + finalR * inverseAlpha;
-                            finalG = decal.data[decalIndex + 1] * alpha + finalG * inverseAlpha;
-                            finalB = decal.data[decalIndex + 2] * alpha + finalB * inverseAlpha;
-                            finalA += decal.data[decalIndex + 3] * alpha;
-                            if (finalA > 255) finalA = 255;
-                        } else {
-                            finalR = decal.data[decalIndex];
-                            finalG = decal.data[decalIndex + 1];
-                            finalB = decal.data[decalIndex + 2];
-                            finalA = 255;
+                            let alpha = decal.data[decalIndex + 3] / 255;
+
+                            // Don't blend if resulting alpha is 1
+                            if (alpha < 1) {
+                                let inverseAlpha = 1 - alpha;
+
+                                finalR = decalR * alpha + finalR * inverseAlpha;
+                                finalG = decalG * alpha + finalG * inverseAlpha;
+                                finalB = decalB * alpha + finalB * inverseAlpha;
+                                finalA += decalA * alpha;
+                                if (finalA > 255) finalA = 255;
+                            } else {
+                                finalR = Math.floor(decalR);
+                                finalG = Math.floor(decalG);
+                                finalB = Math.floor(decalB);
+                                finalA = 255;
+                            }
                         }
                     }
                 }
             }
         }
 
-        let alpha = finalA / 255;
         
-        // Don't draw if resulting alpha is 0
-        if (alpha > 0) {
-            // // Apply distance fog
-            // if (ray.distance > fogStartDistance) {
-            //     finalR *= ray.distance / fogStartDistance;
-            //     finalG *= ray.distance / fogStartDistance;
-            //     finalB *= ray.distance / fogStartDistance;
-            // }
+        // Don't draw if invisible
+        if (finalA > 0) {
+            let alpha = finalA / 255;
 
             // Apply lighting
             let faceVertices = faceToVertices(ray.face);
@@ -582,12 +641,15 @@ function drawScanLine(ray) {
             } else {
                 let inverseTextureX = (1 - ray.textureX);
 
-                finalR *= ray.cell.lightmap[faceVertices[0]].r * ray.textureX + ray.cell.lightmap[faceVertices[1]].r * inverseTextureX;
-                finalG *= ray.cell.lightmap[faceVertices[0]].g * ray.textureX + ray.cell.lightmap[faceVertices[1]].g * inverseTextureX;
-                finalB *= ray.cell.lightmap[faceVertices[0]].b * ray.textureX + ray.cell.lightmap[faceVertices[1]].b * inverseTextureX;
+                let lightmapVertice0 = ray.cell.lightmap[faceVertices[0]];
+                let lightmapVertice1 = ray.cell.lightmap[faceVertices[1]];
+
+                finalR *= lightmapVertice0.r * ray.textureX + lightmapVertice1.r * inverseTextureX;
+                finalG *= lightmapVertice0.g * ray.textureX + lightmapVertice1.g * inverseTextureX;
+                finalB *= lightmapVertice0.b * ray.textureX + lightmapVertice1.b * inverseTextureX;
             }
 
-            // Don't blend if resulting alpha is 1
+            // Don't blend if opaque
             if (alpha < 1) {
                 let inverseAlpha = 1 - alpha;
 
@@ -607,81 +669,92 @@ function drawObject(object) {
     let spriteX = object.x - thisPlayer.x;
     let spriteY = object.y - thisPlayer.y;
 
-    let dirX = Math.cos(thisPlayer.rotation * piRatio);
-    let dirY = Math.sin(thisPlayer.rotation * piRatio);
+    let dirX = Math.cos(thisPlayer.radians);
+    let dirY = Math.sin(thisPlayer.radians);
 
-    let planeX = -Math.sin(thisPlayer.rotation * piRatio);
-    let planeY = Math.cos(thisPlayer.rotation * piRatio);
+    let planeX = -Math.sin(thisPlayer.radians);
+    let planeY = Math.cos(thisPlayer.radians);
 
     let invDet = 1 / (planeX * dirY - dirX * planeY);
 
     let transformX = invDet * (dirY * spriteX - dirX * spriteY);
     let transformY = invDet * (-planeY * spriteX + planeX * spriteY);
 
-    let spriteScreenX = Math.floor(canvas.width / 2 * (1 + transformX / transformY));
+    let spriteScreenX = Math.floor(canvasHalfWidth * (1 + transformX / transformY));
 
-    let onScreenHeight = Math.floor(canvas.height / transformY / screenRatio / 2.1);
+    let scale = 1;
+    if (object.scale != undefined) scale = object.scale;
+
+    let baseScreenHeight = canvas.height / transformY / screenRatio / fovFactor;
+    let onScreenHeight = baseScreenHeight * scale;
 
     let lightmap = getWorldCell(object.x, object.y).lightmap;
 
-    if (object.type >= 0) {
-        let spriteGroup = getSprite(object.type);
-        let sprite = spriteGroup[0];
+    if (object.spriteGroup != undefined) {
+        let sprite = object.spriteGroup[0][0];
 
         if (sprite !== undefined && sprite.width !== undefined) {
-            if (spriteGroup.length > 1) {
-                let angle = -Math.abs(thisPlayer.rotation) + Math.abs(object.rotation) + object.relativeAngle + 360 / spriteGroup.length / 2;
+            let groupIndex = 0;
+            let spriteFrame = 0;
+            
+            if (object.spriteGroup.length > 1) {
+                let angle = -Math.abs(thisPlayer.rotation) + Math.abs(object.rotation) + object.relativeAngle + 360 / object.spriteGroup.length / 2;
                 angle = angle % 360;
                 if (angle < 0) angle += 360;
-                let index = Math.floor((360 - angle) / 360 * spriteGroup.length);
-
-                sprite = spriteGroup[index];
+                groupIndex = Math.floor((360 - angle) / 360 * object.spriteGroup.length);
             }
 
-            let onScreenWidth = sprite.width / sprite.height * onScreenHeight;
+            let spriteFrames = object.spriteGroup[groupIndex];
+            let animationOffset = object.animationOffset != undefined ? object.animationOffset : 0;
+
+            if (spriteFrames.frames > 1) spriteFrame = Math.floor((animationFrameCounter - animationOffset) * spriteFrames.speed) % spriteFrames.frames;
+
+            sprite = spriteFrames[spriteFrame];
+
+            if (sprite == undefined) return;
+
+            let onScreenWidth = Math.floor(sprite.width / sprite.height * onScreenHeight);
             
             let spriteHalfWidth = Math.floor(onScreenWidth / 2);
-            let spriteHalfHeight = Math.floor(onScreenHeight / 2);
+            let spriteHalfHeight = onScreenHeight / 2;
 
-            let startY = horizon - spriteHalfHeight > 0 ? horizon - spriteHalfHeight : 0;
-            let stopY = horizon + spriteHalfHeight < canvas.height ? horizon + spriteHalfHeight : canvas.height;
+            let center = horizon - ((baseScreenHeight / 2) - spriteHalfHeight) * object.origin;
 
-            for (let onScreenY = startY; onScreenY <= stopY; onScreenY++) {
-                let spriteY = (onScreenY - (horizon - spriteHalfHeight)) / onScreenHeight;
+            let startY = Math.floor(center - spriteHalfHeight);
+            let stopY = Math.floor(startY + onScreenHeight);
 
-                let startX = spriteScreenX - spriteHalfWidth > 0 ? spriteScreenX - spriteHalfWidth : 0;
-                let stopX = spriteScreenX + spriteHalfWidth < canvas.width ? spriteScreenX + spriteHalfWidth : canvas.width;
+            for (let onScreenY = (startY > 0 ? startY : 0); onScreenY <= (stopY < canvas.height ? stopY : canvas.height); onScreenY++) {
+                let spriteY = (onScreenY - startY) / onScreenHeight;
 
-                for (let onScreenX = startX; onScreenX <= stopX; onScreenX++) {
+                let startX = spriteScreenX - spriteHalfWidth;
+                let stopX = spriteScreenX + spriteHalfWidth;
+
+                for (let onScreenX = (startX > 0 ? startX : 0); onScreenX <= (stopX < canvas.width ? stopX : canvas.width); onScreenX++) {
 
                     let spriteX = (onScreenX - (spriteScreenX - spriteHalfWidth)) / onScreenWidth;
 
                     // Get imageData array indexes
-                    let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + onScreenX) * 4;
-                    let spriteIndex = Math.floor(sprite.width * Math.floor(spriteY * sprite.height) + Math.floor(spriteX * sprite.width)) * 4;
+                    let canvasIndex = ((canvas.width + 1) * onScreenY + onScreenX) * 4;
+                    let spriteIndex = (sprite.width * Math.floor(spriteY * sprite.height) + Math.floor(spriteX * sprite.width)) * 4;
 
-                    let finalR = sprite.data[spriteIndex];
-                    let finalG = sprite.data[spriteIndex + 1];
-                    let finalB = sprite.data[spriteIndex + 2];
                     let finalA = sprite.data[spriteIndex + 3];
 
-                    let alpha = finalA / 255;
+                    // Don't draw if invisible
+                    if (finalA > 0) {
+                        let finalR = sprite.data[spriteIndex];
+                        let finalG = sprite.data[spriteIndex + 1];
+                        let finalB = sprite.data[spriteIndex + 2];
+
+                        let alpha = finalA / 255;
                     
-                    // Don't draw if resulting alpha is 0
-                    if (alpha > 0) {
-                        // // Apply distance fog
-                        // if (object.distance > fogStartDistance) {
-                        //     finalR *= object.distance / fogStartDistance;
-                        //     finalG *= object.distance / fogStartDistance;
-                        //     finalB *= object.distance / fogStartDistance;
-                        // }
+                        if (!object.spriteGroup.fullBright) {
+                            // Apply lighting
+                            finalR *= lightmap.average.r;
+                            finalG *= lightmap.average.g;
+                            finalB *= lightmap.average.b;
+                        }
 
-                        // Apply lighting
-                        finalR *= lightmap.average.r;
-                        finalG *= lightmap.average.g;
-                        finalB *= lightmap.average.b;
-
-                        // Don't blend if resulting alpha is 1
+                        // Don't blend if opaque
                         if (alpha < 1) {
                             let inverseAlpha = 1 - alpha;
 
@@ -700,19 +773,43 @@ function drawObject(object) {
     }
 
     // Draw name
-    if (object.name !== '' && onScreenHeight > 30) {
-        uiContext.font = `${onScreenHeight * uiScaleFactor / 32}pt Oswald`;
-        uiContext.fillStyle = '#ebebeb';
-        uiContext.textAlign = 'center';
-        uiContext.shadowColor="black";
-        uiContext.shadowBlur = 5;
-        uiContext.fillText(object.name, spriteScreenX * uiScaleFactor, horizon * uiScaleFactor - onScreenHeight / 4);
-        uiContext.shadowBlur = 0;
+    if (object.name !== undefined && object.name !== '' && onScreenHeight > 30) {
+        labelContext.font = `${onScreenHeight * uiScaleFactor / 32}pt Oswald`;
+        labelContext.fillStyle = '#ebebeb';
+        labelContext.textAlign = 'center';
+        labelContext.shadowColor = 'black';
+        labelContext.shadowBlur = 5;
+        labelContext.fillText(object.name, spriteScreenX * uiScaleFactor, horizon * uiScaleFactor - onScreenHeight / 4);
     }
 }
 
 function drawUI() {
-    if (currentKeyState.m) drawMiniMap();
+    if (currentControlState.viewModel.texture != undefined) drawViewModel();
+
+    if (currentControlState.showMap) drawMiniMap();
+}
+
+function drawViewModel() {
+    let viewModel = currentControlState.viewModel;
+
+    let currentFrame = currentControlState.viewModel.texture[0];
+
+    let viewModelWidth = viewModelSizeRatio * uiCanvas.width;
+    let viewModelHeight = viewModelWidth / currentFrame.width * currentFrame.height;
+
+    let xBob = Math.sin(performance.now() * viewModelBobSpeed) * viewModel.bobFactor * viewModelBobAmplitude;
+    let yBob = Math.abs(Math.sin(performance.now() * viewModelBobSpeed)) * viewModel.bobFactor * viewModelBobAmplitude;
+
+    let x = uiCanvasHalfWidth - viewModelWidth / 2 + xBob;
+    let y = uiCanvas.height - viewModelHeight + yBob;
+
+    let lightmapAverage = getWorldCell(thisPlayer.x, thisPlayer.y).lightmap.average;
+    let tintColor = `rgb(
+        ${lightmapAverage.r * viewModelLightFactor},
+        ${lightmapAverage.g * viewModelLightFactor},
+        ${lightmapAverage.b * viewModelLightFactor})`;
+
+    uiContext.drawImage(currentControlState.viewModelTinting ? tintImage(currentFrame, tintColor, tempContext) : currentFrame, x, y, viewModelWidth, viewModelHeight);
 }
 
 function drawMiniMap() {
@@ -786,12 +883,6 @@ function drawMinimapObjectFov(object) {
     uiContext.globalAlpha = 1;
 }
 
-// Physics lets
-let acceleration = 0.001;
-let friction = 1.2;
-
-let playerSize = 0.3;
-
 // Physics funcs
 function updatePlayerPosition(deltaTime) {
     // Apply user-produced state updates
@@ -800,15 +891,15 @@ function updatePlayerPosition(deltaTime) {
     validatePlayerValues();
 
     // Perform collision check
-    performCollisionCheck();
+    if (!currentControlState.noclip) performCollisionCheck();
 
     // Apply player speed
     thisPlayer.x += thisPlayer.speedX * deltaTime;
     thisPlayer.y += thisPlayer.speedY * deltaTime;
 
     // Apply friction to player speed
-    thisPlayer.speedX /= friction;
-    thisPlayer.speedY /= friction;
+    thisPlayer.speedX /= playerFriction;
+    thisPlayer.speedY /= playerFriction;
 
     // Reset precision
     thisPlayer.x = thisPlayer.x.toFixedNumber(3);
@@ -816,45 +907,91 @@ function updatePlayerPosition(deltaTime) {
     thisPlayer.rotation = thisPlayer.rotation.toFixedNumber(1);
     horizon = Math.round(horizon);
 
-    let portal = getWorldCell(thisPlayer.x, thisPlayer.y).portal;
+    let cell = getWorldCell(thisPlayer.x, thisPlayer.y);
 
-    if (portal != null) {
-        thisPlayer.x += portal.x;
-        thisPlayer.y += portal.y;
+    if (cell != undefined && cell.portal != null) {
+        thisPlayer.x += cell.portal.x;
+        thisPlayer.y += cell.portal.y;
     }
 }
 
 function updateUserInput() {
-    let playerRotationRadians = thisPlayer.rotation * piRatio;
-    let playerRotationLeftRadians = (thisPlayer.rotation - 90) * piRatio;
-    let playerRotationRightRadians = (thisPlayer.rotation + 90) * piRatio;
-    if (currentKeyState.w) {
-        thisPlayer.speedX += acceleration * Math.cos(playerRotationRadians);
-        thisPlayer.speedY += acceleration * Math.sin(playerRotationRadians);
+    thisPlayer.radians = thisPlayer.rotation * piRatio;
+
+    if (currentControlState.moveForward) {
+        thisPlayer.speedX += playerAcceleration * Math.cos(thisPlayer.radians);
+        thisPlayer.speedY += playerAcceleration * Math.sin(thisPlayer.radians);
     }
-    if (currentKeyState.s) {
-        thisPlayer.speedX -= acceleration * Math.cos(playerRotationRadians);
-        thisPlayer.speedY -= acceleration * Math.sin(playerRotationRadians);
+    if (currentControlState.moveBackward) {
+        thisPlayer.speedX -= playerAcceleration * Math.cos(thisPlayer.radians);
+        thisPlayer.speedY -= playerAcceleration * Math.sin(thisPlayer.radians);
     }
-    if (currentKeyState.a) {
-        thisPlayer.speedX += acceleration * Math.cos(playerRotationLeftRadians);
-        thisPlayer.speedY += acceleration * Math.sin(playerRotationLeftRadians);
+    if (currentControlState.moveLeft) {
+        thisPlayer.speedX += playerAcceleration * Math.cos(thisPlayer.radians - radians90Deg);
+        thisPlayer.speedY += playerAcceleration * Math.sin(thisPlayer.radians - radians90Deg);
     }
-    if (currentKeyState.d) {
-        thisPlayer.speedX += acceleration * Math.cos(playerRotationRightRadians);
-        thisPlayer.speedY += acceleration * Math.sin(playerRotationRightRadians);
+    if (currentControlState.moveRight) {
+        thisPlayer.speedX += playerAcceleration * Math.cos(thisPlayer.radians + radians90Deg);
+        thisPlayer.speedY += playerAcceleration * Math.sin(thisPlayer.radians + radians90Deg);
     }
-    if (currentKeyState.leftArrow) {
-        thisPlayer.rotation -= 0.15 * deltaTime;
+
+    let turnDelta = cameraArrowsSensitivity * deltaTime;
+
+    if (currentControlState.turnLeft) thisPlayer.rotation -= turnDelta;
+    if (currentControlState.turnRight) thisPlayer.rotation += turnDelta;
+    if (currentControlState.lookDown) horizon -= turnDelta;
+    if (currentControlState.lookUp) horizon += turnDelta;
+
+    // Perspective distortion compensation
+    if (currentControlState.perspective) {
+        canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvasHalfHeight) / 10}deg) scale(1.165)`;
+        labelCanvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvasHalfHeight) / 10}deg) scale(1.165)`;
     }
-    if (currentKeyState.rightArrow) {
-        thisPlayer.rotation += 0.15 * deltaTime;
+
+    // Update Howler listener position
+    Howler.pos(thisPlayer.x, -0.5, thisPlayer.y);
+    Howler.orientation(Math.cos(thisPlayer.radians), 0, Math.sin(thisPlayer.radians), 0, 1, 0);
+
+    // Update viewmodel bob factor
+    currentControlState.viewModel.bobFactor = (Math.abs(thisPlayer.speedX) + Math.abs(thisPlayer.speedY)) / playerMaxSpeed / 2;
+
+    // Use
+    if (!currentControlState.use) currentControlState.useCooldown = false;
+    else if (!currentControlState.useCooldown) {
+        let object = world.objects.find(function (a) {
+            return (
+                a.onPress !== undefined &&
+                a.x < thisPlayer.x + playerInteractionRange && a.x > thisPlayer.x - playerInteractionRange && 
+                a.y < thisPlayer.y + playerInteractionRange && a.y > thisPlayer.y - playerInteractionRange
+            );
+        });
+
+        if (object != undefined) object.onPress();
+
+        currentControlState.useCooldown = true;
     }
-    if (currentKeyState.upArrow) {
-        horizon += 0.15 * deltaTime;
-    }
-    if (currentKeyState.downArrow) {
-        horizon -= 0.15 * deltaTime;
+
+    // Shoot
+    if (!currentControlState.shoot) currentControlState.shootCooldown = false;
+    else if (!currentControlState.shootCooldown) {
+        const projectileSpeed = 0.01;
+
+        let object = {
+            'x': thisPlayer.x,
+            'y': thisPlayer.y,
+            'speedX': projectileSpeed * Math.cos(thisPlayer.radians) + thisPlayer.speedX / 10,
+            'speedY': projectileSpeed * Math.sin(thisPlayer.radians) + thisPlayer.speedY / 10,
+            'rotation': thisPlayer.rotation,
+            'type': 8,
+            'spriteGroup': getSprite(8),
+            'origin': -0.3,
+            'scale': 0.2,
+            'projectile': true
+        }
+
+        world.objects.push(object);
+
+        currentControlState.shootCooldown = true;
     }
 }
 
@@ -866,25 +1003,22 @@ function validatePlayerValues() {
         thisPlayer.rotation -= 360;
     }
 
+    // Validate player speed
+    if (thisPlayer.speedX > playerMaxSpeed) thisPlayer.speedX = playerMaxSpeed;
+    if (thisPlayer.speedY > playerMaxSpeed) thisPlayer.speedY = playerMaxSpeed;
+
     // Validate horizon level
-    if (horizon <= canvas.height / 2 - maxHorizonSkew) {
-        horizon = canvas.height / 2 - maxHorizonSkew;
-    } else if (horizon >= canvas.height / 2 + maxHorizonSkew) {
-        horizon = canvas.height / 2 + maxHorizonSkew;
+    if (horizon <= canvasHalfHeight - maxHorizonSkew) {
+        horizon = canvasHalfHeight - maxHorizonSkew;
+    } else if (horizon >= canvasHalfHeight + maxHorizonSkew) {
+        horizon = canvasHalfHeight + maxHorizonSkew;
     }
-
-    // Perspective distortion compensation
-    if (currentKeyState.perspective) {
-        canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvas.height / 2) / 10}deg)`;
-        // canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvas.height / 2) / 10}deg) scale(${Math.abs((canvas.height / 2) / 1000) + 1})`;
-    }
-
-    Howler.pos(thisPlayer.x, -0.5, thisPlayer.y);
-    let playerRotationRadians = thisPlayer.rotation * piRatio;
-    Howler.orientation(Math.cos(playerRotationRadians), 0, Math.sin(playerRotationRadians), 0, 1, 0);
 }
 
 function performCollisionCheck() {
+    // Skip check if out of bounds
+    if (thisPlayer.x < 0 || thisPlayer.y < 0 || thisPlayer.x >= world.width-1 || thisPlayer.y >= world.height-1) return;
+
     // Collision on x
     let nextStep = thisPlayer.x + thisPlayer.speedX * deltaTime;
     // Negative offset
@@ -908,8 +1042,55 @@ function performCollisionCheck() {
     }
 }
 
-// Objects
 function updateObjects() {
+    for (let i = 0; i < world.objects.length; i++) {
+        let object = world.objects[i];
+
+        if (object.lifetime > 0) {
+            object.lifetime -= deltaTime;
+            if (object.lifetime <= 0) {
+                world.objects.splice(i, 1);
+                return;
+            }
+        }
+
+        // Apply object speed
+        object.x += object.speedX * deltaTime;
+        object.y += object.speedY * deltaTime;
+
+        if (object.x < 0 || object.y < 0 || object.x >= world.width || object.y >= world.height) {
+            world.objects.splice(i, 1);
+            return;
+        }
+
+        if (object.projectile) {
+            if (getWorldCell(object.x, object.y).solid) {
+                world.objects.splice(i, 1);
+
+                let explosion = {
+                    'x': object.x - object.speedX * deltaTime,
+                    'y': object.y - object.speedY * deltaTime,
+                    'speedX': 0,
+                    'speedY': 0,
+                    'rotation': 0,
+                    'type': 7,
+                    'spriteGroup': getSprite(7),
+                    'origin': 0,
+                    'scale': 1,
+                    'animationOffset': animationFrameCounter,
+                    'lifetime': 300
+                }
+        
+                world.objects.push(explosion);
+
+                return;
+            }
+        } else {
+            // Apply friction to object speed
+            object.speedX /= playerFriction;
+            object.speedY /= playerFriction;
+        }
+    }
 }
 
 // Controls
@@ -918,7 +1099,7 @@ canvas.onclick = function () {
     canvas.requestPointerLock();
 };
 
-// Add listener for pointer lock
+// Add mouse event listeners
 document.addEventListener('pointerlockchange', lockChangeAlert, false);
 
 // Add and remove listener for mouse movement on pointer lock
@@ -927,59 +1108,77 @@ function lockChangeAlert() {
         console.log('The pointer lock status is now locked');
         document.body.requestFullscreen();
         document.addEventListener("mousemove", cameraMove, false);
+        document.addEventListener('mousedown', mouseDown, false);
+        document.addEventListener('mouseup', mouseUp, false);
     } else {
         console.log('The pointer lock status is now unlocked');
-        // document.exitFullscreen();
         document.removeEventListener("mousemove", cameraMove, false);
+        document.removeEventListener('mousedown', mouseDown, false);
+        document.removeEventListener('mouseup', mouseUp, false);
     }
 }
 
 // Get mouse movement and apply it to player rotation
 function cameraMove(e) {
-    thisPlayer.rotation += e.movementX / 5;
-    horizon -= e.movementY;
+    thisPlayer.rotation += e.movementX * cameraMouseSensitivity;
+    horizon -= e.movementY * cameraMouseSensitivity * 5;
+}
+
+function mouseDown(e) {
+    if (gameState === 1) {
+        currentControlState.shoot = true;
+    }
+}
+
+function mouseUp(e) {
+    if (gameState === 1) {
+        currentControlState.shoot = false;
+    }
 }
 
 // Update keystates on keydown
 document.addEventListener('keydown', e => {
     if (e.target.tagName.toLowerCase() !== 'input' && gameState > 0) {
-        if (e.keyCode === 87) currentKeyState.w = true;
-        if (e.keyCode === 83) currentKeyState.s = true;
-        if (e.keyCode === 65) currentKeyState.a = true;
-        if (e.keyCode === 68) currentKeyState.d = true;
-        if (e.keyCode === 77) currentKeyState.m = true;
-        if (e.keyCode === 37) currentKeyState.leftArrow = true;
-        if (e.keyCode === 39) currentKeyState.rightArrow = true;
-        if (e.keyCode === 38) currentKeyState.upArrow = true;
-        if (e.keyCode === 40) currentKeyState.downArrow = true;
+        if (e.keyCode === 87) currentControlState.moveForward = true;
+        if (e.keyCode === 83) currentControlState.moveBackward = true;
+        if (e.keyCode === 65) currentControlState.moveLeft = true;
+        if (e.keyCode === 68) currentControlState.moveRight = true;
+        if (e.keyCode === 77) currentControlState.showMap = true;
+        if (e.keyCode === 37) currentControlState.turnLeft = true;
+        if (e.keyCode === 39) currentControlState.turnRight = true;
+        if (e.keyCode === 38) currentControlState.lookUp = true;
+        if (e.keyCode === 40) currentControlState.lookDown = true;
+        if (e.keyCode === 69) currentControlState.use = true;
+        if (e.keyCode === 86) currentControlState.noclip = !currentControlState.noclip;
         if (e.keyCode === 80) {
-            currentKeyState.perspective = !currentKeyState.perspective;
-            if (!currentKeyState.perspective) canvas.style.transform = '';
+            currentControlState.perspective = !currentControlState.perspective;
+            canvas.style.transform = '';
+            labelCanvas.style.transform = '';
         }
         if (e.keyCode === 73) {
-            currentKeyState.info = !currentKeyState.info;
-            if (currentKeyState.info) {
-                changelogLabel.style.visibility = "visible";
-                debugLabel.style.visibility = "visible";
+            currentControlState.info = !currentControlState.info;
+            if (currentControlState.info) {
+                secondaryInfoContainer.style.visibility = "visible";
             } else {
-                changelogLabel.style.visibility = "hidden";
-                debugLabel.style.visibility = "hidden";
+                secondaryInfoContainer.style.visibility = "hidden";
             }
         }
+        if (e.keyCode === 84) currentControlState.viewModelTinting = !currentControlState.viewModelTinting;
     }
 });
 
 // Update keystates on keyup
 window.addEventListener('keyup', e => {
-    if (e.keyCode === 87) currentKeyState.w = false;
-    if (e.keyCode === 83) currentKeyState.s = false;
-    if (e.keyCode === 65) currentKeyState.a = false;
-    if (e.keyCode === 68) currentKeyState.d = false;
-    if (e.keyCode === 77) currentKeyState.m = false;
-    if (e.keyCode === 37) currentKeyState.leftArrow = false;
-    if (e.keyCode === 39) currentKeyState.rightArrow = false;
-    if (e.keyCode === 38) currentKeyState.upArrow = false;
-    if (e.keyCode === 40) currentKeyState.downArrow = false;
+    if (e.keyCode === 87) currentControlState.moveForward = false;
+    if (e.keyCode === 83) currentControlState.moveBackward = false;
+    if (e.keyCode === 65) currentControlState.moveLeft = false;
+    if (e.keyCode === 68) currentControlState.moveRight = false;
+    if (e.keyCode === 77) currentControlState.showMap = false;
+    if (e.keyCode === 37) currentControlState.turnLeft = false;
+    if (e.keyCode === 39) currentControlState.turnRight = false;
+    if (e.keyCode === 38) currentControlState.lookUp = false;
+    if (e.keyCode === 40) currentControlState.lookDown = false;
+    if (e.keyCode === 69) currentControlState.use = false;
 });
 
 // Recalculate canvas size on window resize
@@ -987,11 +1186,15 @@ window.onresize = function() {
     screenRatio = window.innerHeight / window.innerWidth;
 
     canvas.height = canvas.width * screenRatio;
+    labelCanvas.height = labelCanvas.width * screenRatio;
     uiCanvas.height = uiCanvas.width * screenRatio;
-    
-    context.imageSmoothingEnabled = false;
 
-    horizon = canvas.height / 2;
+    canvasHalfHeight = canvas.height / 2;
+    horizon = canvasHalfHeight;
+    
+    uiCanvasHalfWidth = uiCanvas.width / 2;
+
+    uiContext.imageSmoothingEnabled = false;
 }
 window.onresize();
 
@@ -1000,7 +1203,34 @@ function updateFps() {
     Frametime: ${(frameEnd - frameStart).toFixed(2)}ms<br>
     Resolution: ${canvas.width}x${canvas.height}<br>
     Position: ${thisPlayer.x.toFixed(1)} ${thisPlayer.y.toFixed(1)}<br>
-    ${currentKeyState.perspective ? '<br>PERSPECTIVE FIX' : ''}`;
+    ${performanceProbe > 0 ? '<br>Probe: ' + performanceProbe + 'ms<br>' : ''}
+    ${currentControlState.perspective ? '<br>PERSPECTIVE FIX' : ''}
+    ${currentControlState.noclip ? '<br>NOCLIP' : ''}`;
+}
+
+function updateLoadingProgress() {
+    if (performance.now() > 2000) {
+        if (!slowLoad) {
+            slowLoad = true;
+            document.getElementById("loading-popup").classList.add("appear-loading");
+        }
+    }
+
+    if (downloadProgress < maxDownloadProgress) {
+        document.getElementById("progress-bar").style.width = `${downloadProgress / maxDownloadProgress * 100}%`;
+    } else {
+        document.getElementById("progress-text").innerText = "Download complete";
+        document.getElementById("progress-bar").style.width = "100%";
+        
+        document.getElementById("loading-popup").classList.remove("appear-loading");
+        document.getElementById("loading-popup").classList.add("dismiss-loading");
+
+        document.getElementById("info-label-container").classList.add("appear-debug");
+
+        document.getElementById("canvas-container").classList.add("visible");
+
+        gameState = 1;
+    }
 }
 
 function renderLoop() {
@@ -1010,12 +1240,16 @@ function renderLoop() {
 
     frameStart = performance.now();
 
-    if (gameState >= 0) {
-        updateObjects();
-
+    if (gameState > 0) {
         updatePlayerPosition(deltaTime);
 
+        updateObjects();
+
         drawScene();
+
+        animationFrameCounter = performance.now() / 10;
+    } else {
+        updateLoadingProgress();
     }
 
     frameEnd = performance.now();

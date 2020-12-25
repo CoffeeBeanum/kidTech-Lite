@@ -11,14 +11,24 @@
 </head>
 
 <body>
-<canvas id='tempCanvas'></canvas>
-<canvas id='canvas'></canvas>
-<canvas id='uiCanvas'></canvas>
+<div id='canvas-container'>
+    <canvas id='temp-canvas'></canvas>
+    <canvas id='canvas'></canvas>
+    <canvas id='label-canvas'></canvas>
+    <canvas id='ui-canvas'></canvas>
+</div>
 
 <div id="info-label-container">
-    <div class="info-label" id="info-label">kidTech-Lite Alpha 6</div>
-    <div class="info-label" id="changelog-label">Press [P] to activate perspective compensation<br>Hold [M] to view map<br>Press [I] to hide info<br><br>Changelog:<br>- Spatial audio support<br>- Overlapping decals<br>- Fix fullscreen on Firefox</div>
-    <div class="info-label" id="fps-label">FPS: </div>
+    <div class="info-label" id="info-label">kidTech-Lite Alpha 7</div>
+    <div id="secondary-info-container">
+        <div class="info-label" id="changelog-label">Press [P] to activate perspective compensation<br>Hold [M] to view map<br>Press [E] to interact<br>Press [I] to hide info<br><br>Changelog:<br>- Improved light blending<br>- Lightmap rebaking<br>- Object interaction<br>- Animated textures<br>- Moving objects<br>- Player viewmodel<br>- Rocket projectiles<br>- UI animations</div>
+        <div class="info-label" id="fps-label">FPS: </div>
+    </div>
+</div>
+
+<div id="loading-popup">
+    <div id="progress-text">Downloading textures...</div>
+    <div id="progress-bar"></div>
 </div>
 
 <script src="js/howler/howler.core.js"></script>
