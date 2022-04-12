@@ -9,8 +9,13 @@ let presetWorld = {};
 function lightSwitch(name) {
     let light = presetWorld.lights.find(function (a) { return a.name === name });
     light.disabled = !light.disabled;
+
+    let startLightmap = performance.now();
+
     simulateLightPropagation([light.layer]);
     updateWorldLightmap();
+
+    console.log(`Lightmap updated in ${(performance.now() - startLightmap).toFixed(0)}ms`);
 }
 
 // Raw preset world
@@ -29,7 +34,7 @@ presetWorld = {
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,1,1,0],
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
         [0,3,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
-        [0,3,0,0,0,0,0,0,3,1,3,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0],
+        [0,3,0,0,0,0,0,0,3,1,3,0,0,0,0,0,0,0,0,0,6,0,0,0,0,1,0],
         [0,3,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
         [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
@@ -251,9 +256,9 @@ function initializeWorld() {
 
     simulateLightPropagation();
 
-    console.log(`Lightmap generated in ${(performance.now() - startLightmap).toFixed(0)}ms`);
-
     updateWorldLightmap();
+
+    console.log(`Lightmap generated in ${(performance.now() - startLightmap).toFixed(0)}ms`);
 
     // Load objects
     world.objects = presetWorld.objects;
@@ -350,7 +355,7 @@ function simulateLightPropagation(layers) {
         }
     }
 
-    // Simulate proparation for every light separately
+    // Simulate proparation for every light source separately
     for (let i = 0; i < presetWorld.lights.length; i++) {
         if (layers !== undefined) {
             if (layers.includes(i)) {

@@ -2,7 +2,8 @@ import { piRatio, radians90Deg } from './constants.js'
 import { world, faceToVertices } from './world.js'
 import { 
     context, canvas, uiContext, uiCanvas, labelContext, labelCanvas, uiScaleFactor, 
-    debugLabel, secondaryInfoContainer, 
+    debugContainer, debugPerformanceLabel, debugStateLabel, secondaryInfoContainer, 
+    probe1, probe2, probe3, probe4, probe5, probe6, probe7, 
     drawDistance, maxHorizonSkew, 
     minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize,
     playerMaxSpeed, playerAcceleration, playerFriction, playerSize, playerInteractionRange,
@@ -15,11 +16,21 @@ import { tintImage } from './utils/tint.js'
 let frameStart;
 let frameEnd;
 
+let probeCompute;
+let probePrepareFrame;
+let probeRenderFloor;
+let probePrepareRaycast;
+let probeRenderRaycast;
+let probeRenderUI;
+
 let currentTime;
 let deltaTime;
 let lastTime = performance.now();
 
 let animationFrameCounter = performance.now();
+
+let debugMonitorCounter = 0;
+let debugMonitorTimeout = 100;
 
 let performanceProbe = 0;
 
@@ -98,10 +109,10 @@ function ControlState() {
     this.shoot = false;
     this.shootCooldown = false;
     this.info = true;
+    this.debug = true;
     this.perspective = false;
     this.noclip = false;
     this.viewModel = {'texture': getViewModel(0), 'bobFactor': 0, 'bobCounter': 0};
-    this.viewModelTinting = true;
 }
 
 let currentControlState = new ControlState();
@@ -151,32 +162,26 @@ function drawSkybox() {
 function drawFrame() {
     frame = context.getImageData(0, 0, canvas.width + 1, canvas.height);
 
+    // DEBUG PROBE
+    if (currentControlState.debug) { probePrepareFrame = performance.now(); }
+
     drawFloorFrame();
+
+    // DEBUG PROBE
+    if (currentControlState.debug) { probeRenderFloor = performance.now(); }
 
     prepareWallFrame();
     prepareObjects();
 
-    buffer.sort(function (a, b) {
-        return b.distance - a.distance;
-    });
+    // DEBUG PROBE
+    if (currentControlState.debug) { probePrepareRaycast = performance.now(); }
 
-    for (let i = 0, limit = buffer.length; i < limit; i++) {
-        let temp = buffer[i];
-        if (temp instanceof ProcessedRay) drawScanLine(temp);
-        else drawObject(temp);
-    }
+    processBuffer();
 
     context.putImageData(frame, 0, 0);
 }
 
 function drawFloorFrame() {
-    for (let onScreenY = 0; onScreenY < canvas.height; onScreenY++) {
-        drawFloorScanLine(onScreenY);
-    }
-}
-
-
-function drawFloorScanLine(onScreenY) {
     let relativeRayAngle0 = calculateRelativeRayAngle(0);
     let relativeRayAngle1 = calculateRelativeRayAngle(canvas.width);
 
@@ -196,9 +201,16 @@ function drawFloorScanLine(onScreenY) {
 
     calculateRayDirection(ray0);
     calculateRayDirection(ray1);
-
-    let p = Math.abs(onScreenY - horizon + 1);
+    
     let posZ = 0.325 * canvas.height / screenRatio;
+
+    for (let onScreenY = 0; onScreenY < canvas.height; onScreenY++) {
+        drawFloorScanLine(onScreenY, ray0, ray1, posZ);
+    }
+}
+
+function drawFloorScanLine(onScreenY, ray0, ray1, posZ) {
+    let p = Math.abs(onScreenY - horizon + 1);
     let rowDistance = posZ / p;
 
     let stepFactor = rowDistance / canvas.width;
@@ -440,7 +452,7 @@ function performRaycast(ray, x, onScreenX) {
     }
 }
 
-// Launches a simple one-step, fixed block type raycast in given rays opposite direction (used to draw other side of transparent blocks).
+// Launches a simple, one-step, fixed block type raycast in given rays opposite direction (used to draw other side of transparent blocks).
 function performBackwardsRaycast(refRay, x, onScreenX) {
     let ray = { ...refRay };
 
@@ -548,6 +560,21 @@ function rayHit(ray, x, onScreenX) {
     }
 }
 
+function processBuffer() {
+    buffer.sort(function (a, b) {
+        return b.distance - a.distance;
+    });
+
+    for (let i = 0, limit = buffer.length; i < limit; i++) {
+        let temp = buffer[i];
+        if (temp instanceof ProcessedRay) drawScanLine(temp);
+        else drawObject(temp);
+    }
+    
+    // DEBUG PROBE
+    if (currentControlState.debug) { probeRenderRaycast = performance.now(); }
+}
+
 function drawScanLine(ray) {
 
     let textureFrames = getTexture(ray.cell.wall);
@@ -582,7 +609,7 @@ function drawScanLine(ray) {
         let finalA = texture.data[textureIndex + 3];
 
         // Draw decal if present
-        if (ray.cell.decals.length >= 0) {
+        if (ray.cell.decals.length > 0) {
             for (let i = 0; i < ray.cell.decals.length; i++) {
                 let decalObject = ray.cell.decals[i];
                 if (decalObject.face === undefined || decalObject.face === ray.face) {
@@ -715,7 +742,7 @@ function drawObject(object) {
 
             let onScreenWidth = Math.floor(sprite.width / sprite.height * onScreenHeight);
             
-            let spriteHalfWidth = Math.floor(onScreenWidth / 2);
+            let spriteHalfWidth = onScreenWidth / 2;
             let spriteHalfHeight = onScreenHeight / 2;
 
             let center = horizon - ((baseScreenHeight / 2) - spriteHalfHeight) * object.origin;
@@ -726,8 +753,8 @@ function drawObject(object) {
             for (let onScreenY = (startY > 0 ? startY : 0); onScreenY <= (stopY < canvas.height ? stopY : canvas.height); onScreenY++) {
                 let spriteY = (onScreenY - startY) / onScreenHeight;
 
-                let startX = spriteScreenX - spriteHalfWidth;
-                let stopX = spriteScreenX + spriteHalfWidth;
+                let startX = Math.ceil(spriteScreenX - spriteHalfWidth);
+                let stopX = Math.ceil(spriteScreenX + spriteHalfWidth) - 1;
 
                 for (let onScreenX = (startX > 0 ? startX : 0); onScreenX <= (stopX < canvas.width ? stopX : canvas.width); onScreenX++) {
 
@@ -787,6 +814,9 @@ function drawUI() {
     if (currentControlState.viewModel.texture != undefined) drawViewModel();
 
     if (currentControlState.showMap) drawMiniMap();
+
+    // DEBUG PROBE
+    if (currentControlState.debug) { probeRenderUI = performance.now(); }
 }
 
 function drawViewModel() {
@@ -803,13 +833,16 @@ function drawViewModel() {
     let x = uiCanvasHalfWidth - viewModelWidth / 2 + xBob;
     let y = uiCanvas.height - viewModelHeight + yBob;
 
-    let lightmapAverage = getWorldCell(thisPlayer.x, thisPlayer.y).lightmap.average;
-    let tintColor = `rgb(
-        ${lightmapAverage.r * viewModelLightFactor},
-        ${lightmapAverage.g * viewModelLightFactor},
-        ${lightmapAverage.b * viewModelLightFactor})`;
-
-    uiContext.drawImage(currentControlState.viewModelTinting ? tintImage(currentFrame, tintColor, tempContext) : currentFrame, x, y, viewModelWidth, viewModelHeight);
+    let cell = getWorldCell(thisPlayer.x, thisPlayer.y);
+    if (cell != undefined) {
+        let lightmapAverage = cell.lightmap.average;
+        let tintColor = `rgb(
+            ${lightmapAverage.r * viewModelLightFactor},
+            ${lightmapAverage.g * viewModelLightFactor},
+            ${lightmapAverage.b * viewModelLightFactor})`;
+        currentFrame = tintImage(currentFrame, tintColor, tempContext);
+    }
+    uiContext.drawImage(currentFrame, x, y, viewModelWidth, viewModelHeight);
 }
 
 function drawMiniMap() {
@@ -1139,23 +1172,23 @@ function mouseUp(e) {
 // Update keystates on keydown
 document.addEventListener('keydown', e => {
     if (e.target.tagName.toLowerCase() !== 'input' && gameState > 0) {
-        if (e.keyCode === 87) currentControlState.moveForward = true;
-        if (e.keyCode === 83) currentControlState.moveBackward = true;
-        if (e.keyCode === 65) currentControlState.moveLeft = true;
-        if (e.keyCode === 68) currentControlState.moveRight = true;
-        if (e.keyCode === 77) currentControlState.showMap = true;
-        if (e.keyCode === 37) currentControlState.turnLeft = true;
-        if (e.keyCode === 39) currentControlState.turnRight = true;
-        if (e.keyCode === 38) currentControlState.lookUp = true;
-        if (e.keyCode === 40) currentControlState.lookDown = true;
-        if (e.keyCode === 69) currentControlState.use = true;
-        if (e.keyCode === 86) currentControlState.noclip = !currentControlState.noclip;
-        if (e.keyCode === 80) {
+        if (e.code === "KeyW") currentControlState.moveForward = true;
+        if (e.code === "KeyS") currentControlState.moveBackward = true;
+        if (e.code === "KeyA") currentControlState.moveLeft = true;
+        if (e.code === "KeyD") currentControlState.moveRight = true;
+        if (e.code === "KeyM") currentControlState.showMap = true;
+        if (e.code === "ArrowLeft") currentControlState.turnLeft = true;
+        if (e.code === "ArrowRight") currentControlState.turnRight = true;
+        if (e.code === "ArrowUp") currentControlState.lookUp = true;
+        if (e.code === "ArrowDown") currentControlState.lookDown = true;
+        if (e.code === "KeyE") currentControlState.use = true;
+        if (e.code === "KeyV") currentControlState.noclip = !currentControlState.noclip;
+        if (e.code === "KeyP") {
             currentControlState.perspective = !currentControlState.perspective;
             canvas.style.transform = '';
             labelCanvas.style.transform = '';
         }
-        if (e.keyCode === 73) {
+        if (e.code === "KeyI") {
             currentControlState.info = !currentControlState.info;
             if (currentControlState.info) {
                 secondaryInfoContainer.style.visibility = "visible";
@@ -1163,22 +1196,29 @@ document.addEventListener('keydown', e => {
                 secondaryInfoContainer.style.visibility = "hidden";
             }
         }
-        if (e.keyCode === 84) currentControlState.viewModelTinting = !currentControlState.viewModelTinting;
+        if (e.code === "Backquote") {
+            currentControlState.debug = !currentControlState.debug;
+            if (currentControlState.debug) {
+                debugContainer.style.visibility = "visible";
+            } else {
+                debugContainer.style.visibility = "hidden";
+            }
+        }
     }
 });
 
 // Update keystates on keyup
 window.addEventListener('keyup', e => {
-    if (e.keyCode === 87) currentControlState.moveForward = false;
-    if (e.keyCode === 83) currentControlState.moveBackward = false;
-    if (e.keyCode === 65) currentControlState.moveLeft = false;
-    if (e.keyCode === 68) currentControlState.moveRight = false;
-    if (e.keyCode === 77) currentControlState.showMap = false;
-    if (e.keyCode === 37) currentControlState.turnLeft = false;
-    if (e.keyCode === 39) currentControlState.turnRight = false;
-    if (e.keyCode === 38) currentControlState.lookUp = false;
-    if (e.keyCode === 40) currentControlState.lookDown = false;
-    if (e.keyCode === 69) currentControlState.use = false;
+    if (e.code === "KeyW") currentControlState.moveForward = false;
+    if (e.code === "KeyS") currentControlState.moveBackward = false;
+    if (e.code === "KeyA") currentControlState.moveLeft = false;
+    if (e.code === "KeyD") currentControlState.moveRight = false;
+    if (e.code === "KeyM") currentControlState.showMap = false;
+    if (e.code === "ArrowLeft") currentControlState.turnLeft = false;
+    if (e.code === "ArrowRight") currentControlState.turnRight = false;
+    if (e.code === "ArrowUp") currentControlState.lookUp = false;
+    if (e.code === "ArrowDown") currentControlState.lookDown = false;
+    if (e.code === "KeyE") currentControlState.use = false;
 });
 
 // Recalculate canvas size on window resize
@@ -1198,14 +1238,49 @@ window.onresize = function() {
 }
 window.onresize();
 
-function updateFps() {
-    debugLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>
-    Frametime: ${(frameEnd - frameStart).toFixed(2)}ms<br>
-    Resolution: ${canvas.width}x${canvas.height}<br>
+function updateDebugMonitor() {
+    let totalFrameTime = frameEnd - frameStart
+
+    debugPerformanceLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>
+    Frametime: ${totalFrameTime.toFixed(1)}ms<br>
     Position: ${thisPlayer.x.toFixed(1)} ${thisPlayer.y.toFixed(1)}<br>
-    ${performanceProbe > 0 ? '<br>Probe: ' + performanceProbe + 'ms<br>' : ''}
-    ${currentControlState.perspective ? '<br>PERSPECTIVE FIX' : ''}
-    ${currentControlState.noclip ? '<br>NOCLIP' : ''}`;
+    ${performanceProbe > 0 ? '<br>Probe: ' + performanceProbe + 'ms<br>' : ''}`;
+
+    debugStateLabel.innerHTML = `${currentControlState.perspective ? 'PERSPECTIVE FIX<br>' : ''}
+    ${currentControlState.noclip ? 'NOCLIP<br>' : ''}`
+
+
+    let probe1Value = (probeCompute - frameStart)
+    let probe2Value = (probePrepareFrame - frameStart) - probe1Value
+    let probe3Value = (probeRenderFloor - frameStart) - probe1Value - probe2Value
+    let probe4Value = (probePrepareRaycast - frameStart) - probe1Value - probe2Value - probe3Value
+    let probe5Value = (probeRenderRaycast - frameStart) - probe1Value - probe2Value - probe3Value - probe4Value
+    let probe6Value = (probeRenderUI - frameStart) - probe1Value - probe2Value - probe3Value - probe4Value - probe5Value
+    let probe7Value = totalFrameTime - probe1Value - probe2Value - probe3Value - probe4Value - probe5Value - probe6Value
+
+    let probe1Percent = probe1Value / totalFrameTime * 100
+    let probe2Percent = probe2Value / totalFrameTime * 100
+    let probe3Percent = probe3Value / totalFrameTime * 100
+    let probe4Percent = probe4Value / totalFrameTime * 100
+    let probe5Percent = probe5Value / totalFrameTime * 100
+    let probe6Percent = probe6Value / totalFrameTime * 100
+    let probe7Percent = probe7Value / totalFrameTime * 100
+
+    probe1.style.width = `${probe1Percent}%`
+    probe2.style.width = `${probe2Percent}%`
+    probe3.style.width = `${probe3Percent}%`
+    probe4.style.width = `${probe4Percent}%`
+    probe5.style.width = `${probe5Percent}%`
+    probe6.style.width = `${probe6Percent}%`
+    probe7.style.width = `${probe7Percent}%`
+
+    probe1.innerText = probe1Percent >= 10 ? `${probe1Value.toFixed(1)}ms` : ''
+    probe2.innerText = probe2Percent >= 10 ? `${probe2Value.toFixed(1)}ms` : ''
+    probe3.innerText = probe3Percent >= 10 ? `${probe3Value.toFixed(1)}ms` : ''
+    probe4.innerText = probe4Percent >= 10 ? `${probe4Value.toFixed(1)}ms` : ''
+    probe5.innerText = probe5Percent >= 10 ? `${probe5Value.toFixed(1)}ms` : ''
+    probe6.innerText = probe6Percent >= 10 ? `${probe6Value.toFixed(1)}ms` : ''
+    probe7.innerText = probe7Percent >= 10 ? `${probe7Value.toFixed(1)}ms` : ''
 }
 
 function updateLoadingProgress() {
@@ -1245,6 +1320,9 @@ function renderLoop() {
 
         updateObjects();
 
+        // DEBUG PROBE
+        if (currentControlState.debug) { probeCompute = performance.now(); }
+
         drawScene();
 
         animationFrameCounter = performance.now() / 10;
@@ -1254,7 +1332,10 @@ function renderLoop() {
 
     frameEnd = performance.now();
 
-    updateFps();
+    if (currentControlState.debug && frameEnd - debugMonitorCounter > debugMonitorTimeout) { 
+        debugMonitorCounter = performance.now()
+        updateDebugMonitor();
+    }
 
     requestAnimationFrame(renderLoop);
 }

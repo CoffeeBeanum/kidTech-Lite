@@ -3,6 +3,11 @@
     src: url('resources/fonts/Oswald-VariableFont_wght.ttf')  format('truetype')
 }
 
+@font-face {
+    font-family: 'VT323';
+    src: url('resources/fonts/VT323-Regular.ttf')  format('truetype')
+}
+
 .visible {
     visibility: visible !important;
     opacity: 1 !important;
@@ -97,12 +102,6 @@ canvas {
     font-size: 12pt;
 }
 
-#fps-label {
-    right: 10pt;
-    width: 100pt;
-    overflow: visible;
-}
-
 #info-label-container {
     position: absolute;
     right: 0;
@@ -111,6 +110,90 @@ canvas {
     text-shadow: 0 0 5px black;
     visibility: hidden;
     opacity: 0;
+}
+
+#debug-container {
+    font-family: 'VT323';
+    position: absolute;
+    right: 20pt;
+    bottom: 20pt;
+}
+
+#stats-container {
+    font-size: 15pt;
+    margin-bottom: 10pt;
+}
+
+.debug-label {
+    display: inline-block;
+}
+
+#state-label {
+    float: right;
+}
+
+#probe-container {
+    width: 350pt;
+    height: 25pt;
+    font-size: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    background-color: whitesmoke;
+    border-radius: 4pt;
+}
+
+.probe {
+    display: inline-block;
+    padding-top: 2pt;
+    font-size: 20pt;
+    height: 25pt;
+    text-align: center;
+    vertical-align: middle;
+    transition: width 0.1s ease-out;
+}
+
+#probe1, #probe1LegendColor {
+    background-color: cyan;
+}
+
+#probe2, #probe2LegendColor {
+    background-color: palevioletred;
+}
+
+#probe3, #probe3LegendColor {
+    background-color: peru;
+}
+
+#probe4, #probe4LegendColor {
+    background-color: lightseagreen;
+}
+
+#probe5, #probe5LegendColor {
+    background-color: purple;
+}
+
+#probe6, #probe6LegendColor {
+    background-color: green;
+}
+
+#probe7, #probe7LegendColor {
+    background-color: gray;
+}
+
+#probe-legend-container {
+    width: 350pt;
+}
+
+.probe-legend {
+    padding-right: 5pt;
+    display: inline-block;
+}
+
+.probe-legend-color {
+    display: inline-block;
+    height: 5pt;
+    width: 5pt;
+    border: black 1pt;
 }
 
 #loading-popup {
