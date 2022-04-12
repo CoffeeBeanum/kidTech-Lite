@@ -117,6 +117,33 @@ const viewModelNames = [
     ]
 ];
 
+const materials = {
+    'default': function(data, textureIndex) {
+        return [data[textureIndex], 
+                data[textureIndex + 1], 
+                data[textureIndex + 2], 
+                data[textureIndex + 3]]
+    },
+    'cyberpunk': function(data, textureIndex) {
+        return [data[textureIndex] + Math.round(Math.random() * 100), 
+                data[textureIndex + 1] + Math.round(Math.random() * 25), 
+                data[textureIndex + 2], 
+                data[textureIndex + 3]]
+    },
+    'hologram': function(data, textureIndex) {
+        return [data[textureIndex] - 50, 
+                data[textureIndex + 1], 
+                data[textureIndex + 2], 
+                data[textureIndex + 3] - Math.round(Math.random() * 150)]
+    },
+    'inverted': function(data, textureIndex) {
+        return [255 - data[textureIndex], 
+                255 - data[textureIndex + 1], 
+                255 - data[textureIndex + 2], 
+                data[textureIndex + 3]]
+    }
+}
+
 const tempCanvas = document.getElementById("temp-canvas");
 const tempContext = tempCanvas.getContext("2d", { alpha: true });
 
@@ -125,28 +152,11 @@ function Texture(data, width, height) {
     this.width = width;
     this.height = height;
 
-    const materials = {
-        'default': function(textureIndex) {
-            return [data[textureIndex], 
-                    data[textureIndex + 1], 
-                    data[textureIndex + 2], 
-                    data[textureIndex + 3]]
-        },
-        'cyberpunk': function(textureIndex) {
-            return [data[textureIndex] + Math.round(Math.random() * 100), 
-                    data[textureIndex + 1] + Math.round(Math.random() * 25), 
-                    data[textureIndex + 2], 
-                    data[textureIndex + 3]]
-        },
-        'hologram': function(textureIndex) {
-            return [data[textureIndex] - 50, 
-                    data[textureIndex + 1], 
-                    data[textureIndex + 2], 
-                    data[textureIndex + 3] - Math.round(Math.random() * 150)]
-        },
-    }
+    this.material = materials.default;
 
-    this.material = materials.cyberpunk;
+    this.getPixel = function(textureIndex) {
+        return this.material(data, textureIndex);
+    }
 }
 
 // Texture loading

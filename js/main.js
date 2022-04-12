@@ -129,7 +129,8 @@ let screenRatio = canvas.height / canvas.width;
 
 let canvasHalfHeight = canvas.height / 2;
 let canvasHalfWidth = canvas.width / 2;
-let horizon = canvasHalfHeight;
+let invertedCanvasWidth = 1 / canvas.width;
+let horizon = Math.floor(canvasHalfHeight);
 
 let uiCanvasHalfWidth = uiCanvas.width / 2;
 
@@ -163,18 +164,18 @@ function drawFrame() {
     frame = context.getImageData(0, 0, canvas.width + 1, canvas.height);
 
     // DEBUG PROBE
-    if (currentControlState.debug) { probePrepareFrame = performance.now(); }
+    if (currentControlState.debug) probePrepareFrame = performance.now();
 
     drawFloorFrame();
 
     // DEBUG PROBE
-    if (currentControlState.debug) { probeRenderFloor = performance.now(); }
+    if (currentControlState.debug) probeRenderFloor = performance.now();
 
     prepareWallFrame();
     prepareObjects();
 
     // DEBUG PROBE
-    if (currentControlState.debug) { probePrepareRaycast = performance.now(); }
+    if (currentControlState.debug) probePrepareRaycast = performance.now();
 
     processBuffer();
 
@@ -210,10 +211,10 @@ function drawFloorFrame() {
 }
 
 function drawFloorScanLine(onScreenY, ray0, ray1, posZ) {
-    let p = Math.abs(onScreenY - horizon + 1);
-    let rowDistance = posZ / p;
+    let floorHeight = Math.abs(onScreenY - horizon);
+    let rowDistance = posZ / floorHeight;
 
-    let stepFactor = rowDistance / canvas.width;
+    let stepFactor = rowDistance * invertedCanvasWidth;
 
     let floorStepX = stepFactor * (ray1.dirX - ray0.dirX);
     let floorStepY = stepFactor * (ray1.dirY - ray0.dirY);
@@ -225,37 +226,21 @@ function drawFloorScanLine(onScreenY, ray0, ray1, posZ) {
         let cellX = Math.floor(floorX);
         let cellY = Math.floor(floorY);
 
-        let offsetX = floorX - cellX;
-        let offsetY = floorY - cellY;
-
         if (cellY >= 0 && cellX >= 0 && cellY < world.height && cellX < world.width) {
 
-            // Draw floor
             let cell = getWorldCell(cellX, cellY);
 
-            let floor = cell.floor
-            if (onScreenY > horizon && floor > 0) {
-                let textureFrames = getTexture(floor);
+            let offsetX = floorX - cellX;
+            let offsetY = floorY - cellY;
 
-                let textureFrame = 0;
-                if (textureFrames.frames > 1) textureFrame = Math.floor(animationFrameCounter * textureFrames.speed) % textureFrames.frames;
-
-                let texture = textureFrames[textureFrame];
-
-                if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell);
+            // Draw floor
+            if (cell.floor > 0 && onScreenY > horizon) {
+                preparePlanarPixel(cell.floor, onScreenX, onScreenY, offsetX, offsetY, cell.lightmap);
             }
 
             // Draw ceiling
-            let ceiling = cell.ceiling
-            if (onScreenY < horizon && ceiling > 0) {
-                let textureFrames = getTexture(ceiling);
-
-                let textureFrame = 0;
-                if (textureFrames.frames > 1) textureFrame = Math.floor(animationFrameCounter * textureFrames.speed) % textureFrames.frames;
-
-                let texture = textureFrames[textureFrame];
-                
-                if (texture !== undefined && texture.width !== undefined) drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell);
+            if (cell.ceiling > 0 && onScreenY < horizon) {
+                preparePlanarPixel(cell.ceiling, onScreenX, onScreenY, offsetX, offsetY, cell.lightmap);
             }
         }
         
@@ -264,24 +249,35 @@ function drawFloorScanLine(onScreenY, ray0, ray1, posZ) {
     }
 }
 
-function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell) {
+function preparePlanarPixel(textureType ,onScreenX, onScreenY, offsetX, offsetY, lightmap) {
+    let textureFrames = getTexture(textureType)
+
+    let textureFrame = 0;
+    if (textureFrames.frames > 1) textureFrame = Math.floor(animationFrameCounter * textureFrames.speed) % textureFrames.frames;
+
+    let texture = textureFrames[textureFrame];
+    
+    if (texture !== undefined && texture.width !== undefined) drawPlanarPixel(texture, onScreenX, onScreenY, offsetX, offsetY, lightmap);
+}
+
+function drawPlanarPixel(texture, onScreenX, onScreenY, offsetX, offsetY, lightmap) {
     let textureX = Math.floor(texture.width * offsetX);
     let textureY = Math.floor(texture.height * offsetY);
 
     let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + onScreenX) * 4;
     let textureIndex = Math.floor(texture.width * textureY + textureX) * 4;
     
-    let [finalR, finalG, finalB, finalA] = texture.material(textureIndex);
+    let [finalR, finalG, finalB, finalA] = texture.getPixel(textureIndex);
 
     let alpha = finalA / 255;
         
     // Don't draw if resulting alpha is 0
     if (alpha > 0) {
         // Apply lighting
-        if (cell.lightmap.uniform) {
-            finalR *= cell.lightmap.average.r;
-            finalG *= cell.lightmap.average.g;
-            finalB *= cell.lightmap.average.b;
+        if (lightmap.uniform) {
+            finalR *= lightmap.average.r;
+            finalG *= lightmap.average.g;
+            finalB *= lightmap.average.b;
         } else {
             let inverseOffsetX = (1 - offsetX);
             let inverseOffsetY = (1 - offsetY);
@@ -290,10 +286,10 @@ function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell) {
             let offsetXY = offsetX * offsetY;
             let offsetiXY = inverseOffsetX * offsetY;
             
-            let lightmap0 = cell.lightmap[0];
-            let lightmap1 = cell.lightmap[1];
-            let lightmap2 = cell.lightmap[2];
-            let lightmap3 = cell.lightmap[3];
+            let lightmap0 = lightmap[0];
+            let lightmap1 = lightmap[1];
+            let lightmap2 = lightmap[2];
+            let lightmap3 = lightmap[3];
 
             finalR *= (
                 lightmap0.r * offsetiXiY +
@@ -569,7 +565,7 @@ function processBuffer() {
     }
     
     // DEBUG PROBE
-    if (currentControlState.debug) { probeRenderRaycast = performance.now(); }
+    if (currentControlState.debug) probeRenderRaycast = performance.now();
 }
 
 function drawScanLine(ray) {
@@ -587,20 +583,20 @@ function drawScanLine(ray) {
     let halfScreenSize = ray.onScreenSize / 2;
 
     let scanStartY = Math.floor(horizon - halfScreenSize);
-    let scanEndY = Math.floor(horizon + halfScreenSize);
+    let scanEndY = Math.ceil(horizon + halfScreenSize);
 
     // Discard offscreen values
     if (scanStartY < 0) scanStartY = 0;
     if (scanEndY > canvas.height) scanEndY = canvas.height;
 
     for (let onScreenY = scanStartY; onScreenY < scanEndY; onScreenY++) {
-        let textureY = Math.ceil(onScreenY - horizon + halfScreenSize) / ray.onScreenSize;
+        let textureY = (onScreenY - horizon + halfScreenSize) / ray.onScreenSize;
 
         // Get imageData array indexes
         let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + ray.onScreenX) * 4;
         let textureIndex = Math.floor(texture.width * Math.floor(textureY * texture.height) + textureX) * 4;
 
-        let [finalR, finalG, finalB, finalA] = texture.material(textureIndex);
+        let [finalR, finalG, finalB, finalA] = texture.getPixel(textureIndex);
 
         // Draw decal if present
         if (ray.cell.decals.length > 0) {
@@ -646,7 +642,6 @@ function drawScanLine(ray) {
                 }
             }
         }
-
         
         // Don't draw if invisible
         if (finalA > 0) {
@@ -810,7 +805,7 @@ function drawUI() {
     if (currentControlState.showMap) drawMiniMap();
 
     // DEBUG PROBE
-    if (currentControlState.debug) { probeRenderUI = performance.now(); }
+    if (currentControlState.debug) probeRenderUI = performance.now();
 }
 
 function drawViewModel() {
@@ -1223,8 +1218,10 @@ window.onresize = function() {
     labelCanvas.height = labelCanvas.width * screenRatio;
     uiCanvas.height = uiCanvas.width * screenRatio;
 
+    canvasHalfWidth = canvas.width / 2;
     canvasHalfHeight = canvas.height / 2;
-    horizon = canvasHalfHeight;
+    invertedCanvasWidth = 1 / canvas.width;
+    horizon = Math.floor(canvasHalfHeight);
     
     uiCanvasHalfWidth = uiCanvas.width / 2;
 
