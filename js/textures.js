@@ -124,6 +124,29 @@ function Texture(data, width, height) {
     this.data = data;
     this.width = width;
     this.height = height;
+
+    const materials = {
+        'default': function(textureIndex) {
+            return [data[textureIndex], 
+                    data[textureIndex + 1], 
+                    data[textureIndex + 2], 
+                    data[textureIndex + 3]]
+        },
+        'cyberpunk': function(textureIndex) {
+            return [data[textureIndex] + Math.round(Math.random() * 100), 
+                    data[textureIndex + 1] + Math.round(Math.random() * 25), 
+                    data[textureIndex + 2], 
+                    data[textureIndex + 3]]
+        },
+        'hologram': function(textureIndex) {
+            return [data[textureIndex] - 50, 
+                    data[textureIndex + 1], 
+                    data[textureIndex + 2], 
+                    data[textureIndex + 3] - Math.round(Math.random() * 150)]
+        },
+    }
+
+    this.material = materials.cyberpunk;
 }
 
 // Texture loading

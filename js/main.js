@@ -270,11 +270,8 @@ function drawFloorPixel(texture, onScreenX, onScreenY, offsetX, offsetY, cell) {
 
     let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + onScreenX) * 4;
     let textureIndex = Math.floor(texture.width * textureY + textureX) * 4;
-
-    let finalR = texture.data[textureIndex];
-    let finalG = texture.data[textureIndex + 1];
-    let finalB = texture.data[textureIndex + 2];
-    let finalA = texture.data[textureIndex + 3];
+    
+    let [finalR, finalG, finalB, finalA] = texture.material(textureIndex);
 
     let alpha = finalA / 255;
         
@@ -603,10 +600,7 @@ function drawScanLine(ray) {
         let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + ray.onScreenX) * 4;
         let textureIndex = Math.floor(texture.width * Math.floor(textureY * texture.height) + textureX) * 4;
 
-        let finalR = texture.data[textureIndex];
-        let finalG = texture.data[textureIndex + 1];
-        let finalB = texture.data[textureIndex + 2];
-        let finalA = texture.data[textureIndex + 3];
+        let [finalR, finalG, finalB, finalA] = texture.material(textureIndex);
 
         // Draw decal if present
         if (ray.cell.decals.length > 0) {
