@@ -77,20 +77,20 @@ function Ray(x, y, dirX, dirY) {
     this.hit = 0; // type of wall ray hit
     this.backward = false;
     this.done = false;
-    this.side = 0; // side of the wall ray hit
+    this.side = 0; // x or y side of the wall ray hit
     this.sector = 0; // sector of wall ray hit
-    this.coordJumps = [];
-    this.face = 0;
+    this.coordJumps = []; // list of coordinate jumps
+    this.face = 0; // face of the wall ray hit
 }
 
 function ProcessedRay(onScreenX, cell, textureX, side, distance, onScreenSize, face) {
     this.onScreenX = onScreenX; // onscreen position
     this.cell = cell; // texture index
     this.textureX = textureX; // position on texture
-    this.side = side; // side of the wall ray hit
+    this.side = side; // x or y side of the wall ray hit
     this.distance = distance; // ray length
     this.onScreenSize = onScreenSize; // ray size on screen
-    this.face = face;
+    this.face = face; // face of the wall ray hit
 }
 
 // Key states
@@ -602,41 +602,46 @@ function drawScanLine(ray) {
         if (ray.cell.decals.length > 0) {
             for (let i = 0; i < ray.cell.decals.length; i++) {
                 let decalObject = ray.cell.decals[i];
+                
+                // Don't draw if face not matching
                 if (decalObject.face === undefined || decalObject.face === ray.face) {
-                    let decal = getDecal(ray.cell.decals[i].type);
+                    let decalFrames = getDecal(ray.cell.decals[i].type);
 
-                    // Don't draw if decal hasn't loaded yet
-                    if (decal !== undefined && decal.width !== undefined) {
-                        let textureX = Math.floor(ray.textureX * decal.width);
+                    let decalFrame = 0;
 
-                        let decalIndex = Math.floor(decal.width * Math.floor(textureY * decal.height) + textureX) * 4;
+                    if (decalFrames.frames > 1) decalFrame = Math.floor(animationFrameCounter * decalFrames.speed) % decalFrames.frames;
 
-                        let decalA = decal.data[decalIndex + 3];
+                    let decalTexture = decalFrames[decalFrame];
 
-                        // Don't draw if invisible
-                        if (decalA > 0) {
-                            
-                            let decalR = decal.data[decalIndex];
-                            let decalG = decal.data[decalIndex + 1];
-                            let decalB = decal.data[decalIndex + 2];
+                    let textureX = Math.floor(ray.textureX * decalTexture.width);
 
-                            let alpha = decal.data[decalIndex + 3] / 255;
+                    let decalIndex = Math.floor(decalTexture.width * Math.floor(textureY * decalTexture.height) + textureX) * 4;
 
-                            // Don't blend if resulting alpha is 1
-                            if (alpha < 1) {
-                                let inverseAlpha = 1 - alpha;
+                    let decalA = decalTexture.data[decalIndex + 3];
 
-                                finalR = decalR * alpha + finalR * inverseAlpha;
-                                finalG = decalG * alpha + finalG * inverseAlpha;
-                                finalB = decalB * alpha + finalB * inverseAlpha;
-                                finalA += decalA * alpha;
-                                if (finalA > 255) finalA = 255;
-                            } else {
-                                finalR = Math.floor(decalR);
-                                finalG = Math.floor(decalG);
-                                finalB = Math.floor(decalB);
-                                finalA = 255;
-                            }
+                    // Don't draw if invisible
+                    if (decalA > 0) {
+                        
+                        let decalR = decalTexture.data[decalIndex];
+                        let decalG = decalTexture.data[decalIndex + 1];
+                        let decalB = decalTexture.data[decalIndex + 2];
+
+                        let alpha = decalTexture.data[decalIndex + 3] / 255;
+
+                        // Don't blend if resulting alpha is 1
+                        if (alpha < 1) {
+                            let inverseAlpha = 1 - alpha;
+
+                            finalR = decalR * alpha + finalR * inverseAlpha;
+                            finalG = decalG * alpha + finalG * inverseAlpha;
+                            finalB = decalB * alpha + finalB * inverseAlpha;
+                            finalA += decalA * alpha;
+                            if (finalA > 255) finalA = 255;
+                        } else {
+                            finalR = Math.floor(decalR);
+                            finalG = Math.floor(decalG);
+                            finalB = Math.floor(decalB);
+                            finalA = 255;
                         }
                     }
                 }
@@ -704,85 +709,83 @@ function drawObject(object) {
     let baseScreenHeight = canvas.height / transformY / screenRatio / fovFactor;
     let onScreenHeight = baseScreenHeight * scale;
 
-    let lightmap = getWorldCell(object.x, object.y).lightmap;
+    if (object.sprites != undefined) {
 
-    if (object.spriteGroup != undefined) {
-        let sprite = object.spriteGroup[0][0];
+        let groupIndex = 0;
+        
+        if (object.sprites.groups > 1) {
+            let angle = -Math.abs(thisPlayer.rotation) + Math.abs(object.rotation) + object.relativeAngle + 360 / object.sprites.groups / 2;
+            angle = angle % 360;
+            if (angle < 0) angle += 360;
+            groupIndex = Math.floor((360 - angle) / 360 * object.sprites.groups);
+        }
 
-        if (sprite !== undefined && sprite.width !== undefined) {
-            let groupIndex = 0;
-            let spriteFrame = 0;
-            
-            if (object.spriteGroup.length > 1) {
-                let angle = -Math.abs(thisPlayer.rotation) + Math.abs(object.rotation) + object.relativeAngle + 360 / object.spriteGroup.length / 2;
-                angle = angle % 360;
-                if (angle < 0) angle += 360;
-                groupIndex = Math.floor((360 - angle) / 360 * object.spriteGroup.length);
-            }
+        let spriteFrames = object.sprites[groupIndex];
+        let animationOffset = object.animationOffset != undefined ? object.animationOffset : 0;
 
-            let spriteFrames = object.spriteGroup[groupIndex];
-            let animationOffset = object.animationOffset != undefined ? object.animationOffset : 0;
+        let spriteFrame = 0;
 
-            if (spriteFrames.frames > 1) spriteFrame = Math.floor((animationFrameCounter - animationOffset) * spriteFrames.speed) % spriteFrames.frames;
+        if (spriteFrames.frames > 1) spriteFrame = Math.floor((animationFrameCounter - animationOffset) * spriteFrames.speed) % spriteFrames.frames;
 
-            sprite = spriteFrames[spriteFrame];
+        let sprite = spriteFrames[spriteFrame];
 
-            if (sprite == undefined) return;
+        if (sprite == undefined) return;
 
-            let onScreenWidth = Math.floor(sprite.width / sprite.height * onScreenHeight);
-            
-            let spriteHalfWidth = onScreenWidth / 2;
-            let spriteHalfHeight = onScreenHeight / 2;
+        let onScreenWidth = Math.floor(sprite.width / sprite.height * onScreenHeight);
+        
+        let spriteHalfWidth = onScreenWidth / 2;
+        let spriteHalfHeight = onScreenHeight / 2;
 
-            let center = horizon - ((baseScreenHeight / 2) - spriteHalfHeight) * object.origin;
+        let center = horizon - ((baseScreenHeight / 2) - spriteHalfHeight) * object.origin;
 
-            let startY = Math.floor(center - spriteHalfHeight);
-            let stopY = Math.floor(startY + onScreenHeight);
+        let startY = Math.floor(center - spriteHalfHeight);
+        let stopY = Math.floor(startY + onScreenHeight);
 
-            for (let onScreenY = (startY > 0 ? startY : 0); onScreenY <= (stopY < canvas.height ? stopY : canvas.height); onScreenY++) {
-                let spriteY = (onScreenY - startY) / onScreenHeight;
+        for (let onScreenY = (startY > 0 ? startY : 0); onScreenY <= (stopY < canvas.height ? stopY : canvas.height); onScreenY++) {
+            let spriteY = (onScreenY - startY) / onScreenHeight;
 
-                let startX = Math.ceil(spriteScreenX - spriteHalfWidth);
-                let stopX = Math.ceil(spriteScreenX + spriteHalfWidth) - 1;
+            let startX = Math.ceil(spriteScreenX - spriteHalfWidth);
+            let stopX = Math.ceil(spriteScreenX + spriteHalfWidth) - 1;
 
-                for (let onScreenX = (startX > 0 ? startX : 0); onScreenX <= (stopX < canvas.width ? stopX : canvas.width); onScreenX++) {
+            for (let onScreenX = (startX > 0 ? startX : 0); onScreenX <= (stopX < canvas.width ? stopX : canvas.width); onScreenX++) {
 
-                    let spriteX = (onScreenX - (spriteScreenX - spriteHalfWidth)) / onScreenWidth;
+                let spriteX = (onScreenX - (spriteScreenX - spriteHalfWidth)) / onScreenWidth;
 
-                    // Get imageData array indexes
-                    let canvasIndex = ((canvas.width + 1) * onScreenY + onScreenX) * 4;
-                    let spriteIndex = (sprite.width * Math.floor(spriteY * sprite.height) + Math.floor(spriteX * sprite.width)) * 4;
+                // Get imageData array indexes
+                let canvasIndex = ((canvas.width + 1) * onScreenY + onScreenX) * 4;
+                let spriteIndex = (sprite.width * Math.floor(spriteY * sprite.height) + Math.floor(spriteX * sprite.width)) * 4;
 
-                    let finalA = sprite.data[spriteIndex + 3];
+                let finalA = sprite.data[spriteIndex + 3];
 
-                    // Don't draw if invisible
-                    if (finalA > 0) {
-                        let finalR = sprite.data[spriteIndex];
-                        let finalG = sprite.data[spriteIndex + 1];
-                        let finalB = sprite.data[spriteIndex + 2];
+                // Don't draw if invisible
+                if (finalA > 0) {
+                    let finalR = sprite.data[spriteIndex];
+                    let finalG = sprite.data[spriteIndex + 1];
+                    let finalB = sprite.data[spriteIndex + 2];
 
-                        let alpha = finalA / 255;
-                    
-                        if (!object.spriteGroup.fullBright) {
-                            // Apply lighting
-                            finalR *= lightmap.average.r;
-                            finalG *= lightmap.average.g;
-                            finalB *= lightmap.average.b;
-                        }
+                    let alpha = finalA / 255;
+                
+                    if (!object.sprites.fullBright) {
+                        let lightmap = getWorldCell(object.x, object.y).lightmap;
 
-                        // Don't blend if opaque
-                        if (alpha < 1) {
-                            let inverseAlpha = 1 - alpha;
-
-                            finalR = finalR * alpha + frame.data[canvasIndex] * inverseAlpha;
-                            finalG = finalG * alpha + frame.data[canvasIndex + 1] * inverseAlpha;
-                            finalB = finalB * alpha + frame.data[canvasIndex + 2] * inverseAlpha;
-                        }   
-
-                        frame.data[canvasIndex] = Math.floor(finalR);
-                        frame.data[canvasIndex + 1] = Math.floor(finalG);
-                        frame.data[canvasIndex + 2] = Math.floor(finalB);
+                        // Apply lighting
+                        finalR *= lightmap.average.r;
+                        finalG *= lightmap.average.g;
+                        finalB *= lightmap.average.b;
                     }
+
+                    // Don't blend if opaque
+                    if (alpha < 1) {
+                        let inverseAlpha = 1 - alpha;
+
+                        finalR = finalR * alpha + frame.data[canvasIndex] * inverseAlpha;
+                        finalG = finalG * alpha + frame.data[canvasIndex + 1] * inverseAlpha;
+                        finalB = finalB * alpha + frame.data[canvasIndex + 2] * inverseAlpha;
+                    }   
+
+                    frame.data[canvasIndex] = Math.floor(finalR);
+                    frame.data[canvasIndex + 1] = Math.floor(finalG);
+                    frame.data[canvasIndex + 2] = Math.floor(finalB);
                 }
             }
         }
@@ -940,21 +943,18 @@ function updatePlayerPosition(deltaTime) {
 function updateUserInput() {
     thisPlayer.radians = thisPlayer.rotation * piRatio;
 
-    if (currentControlState.moveForward) {
-        thisPlayer.speedX += playerAcceleration * Math.cos(thisPlayer.radians);
-        thisPlayer.speedY += playerAcceleration * Math.sin(thisPlayer.radians);
-    }
-    if (currentControlState.moveBackward) {
-        thisPlayer.speedX -= playerAcceleration * Math.cos(thisPlayer.radians);
-        thisPlayer.speedY -= playerAcceleration * Math.sin(thisPlayer.radians);
-    }
-    if (currentControlState.moveLeft) {
-        thisPlayer.speedX += playerAcceleration * Math.cos(thisPlayer.radians - radians90Deg);
-        thisPlayer.speedY += playerAcceleration * Math.sin(thisPlayer.radians - radians90Deg);
-    }
-    if (currentControlState.moveRight) {
-        thisPlayer.speedX += playerAcceleration * Math.cos(thisPlayer.radians + radians90Deg);
-        thisPlayer.speedY += playerAcceleration * Math.sin(thisPlayer.radians + radians90Deg);
+    let directionVectorX = 0
+    let directionVectorY = 0
+
+    if (currentControlState.moveForward)  directionVectorY += 1
+    if (currentControlState.moveBackward) directionVectorY -= 1
+    if (currentControlState.moveLeft)     directionVectorX += 1
+    if (currentControlState.moveRight)    directionVectorX -= 1
+
+    if (directionVectorX != 0 || directionVectorY != 0) {
+        let directionRadians = thisPlayer.radians + Math.atan2(directionVectorY, directionVectorX) - radians90Deg;
+        thisPlayer.speedX += playerAcceleration * Math.cos(directionRadians);
+        thisPlayer.speedY += playerAcceleration * Math.sin(directionRadians);
     }
 
     let turnDelta = cameraArrowsSensitivity * deltaTime;
@@ -1005,7 +1005,7 @@ function updateUserInput() {
             'speedY': projectileSpeed * Math.sin(thisPlayer.radians) + thisPlayer.speedY / 10,
             'rotation': thisPlayer.rotation,
             'type': 8,
-            'spriteGroup': getSprite(8),
+            'sprites': getSprite(8),
             'origin': -0.3,
             'scale': 0.2,
             'projectile': true
@@ -1072,7 +1072,8 @@ function updateObjects() {
             object.lifetime -= deltaTime;
             if (object.lifetime <= 0) {
                 world.objects.splice(i, 1);
-                return;
+                i--;
+                continue;
             }
         }
 
@@ -1082,7 +1083,8 @@ function updateObjects() {
 
         if (object.x < 0 || object.y < 0 || object.x >= world.width || object.y >= world.height) {
             world.objects.splice(i, 1);
-            return;
+            i--;
+            continue;
         }
 
         if (object.projectile) {
@@ -1096,7 +1098,7 @@ function updateObjects() {
                     'speedY': 0,
                     'rotation': 0,
                     'type': 7,
-                    'spriteGroup': getSprite(7),
+                    'sprites': getSprite(7),
                     'origin': 0,
                     'scale': 1,
                     'animationOffset': animationFrameCounter,
@@ -1105,7 +1107,8 @@ function updateObjects() {
         
                 world.objects.push(explosion);
 
-                return;
+                i--;
+                continue;
             }
         } else {
             // Apply friction to object speed
@@ -1191,6 +1194,16 @@ document.addEventListener('keydown', e => {
                 debugContainer.style.visibility = "visible";
             } else {
                 debugContainer.style.visibility = "hidden";
+            }
+        }
+        if (e.code === "KeyK") {
+            for (let i = 0; i < world.objects.length; i++) {
+                if (world.objects[i].rotation != undefined) {
+                    world.objects[i].projectile = true;
+                    let radians = world.objects[i].rotation * piRatio;
+                    world.objects[i].speedX = 0.01 * Math.cos(radians);
+                    world.objects[i].speedY = 0.01 * Math.sin(radians);
+                }
             }
         }
     }

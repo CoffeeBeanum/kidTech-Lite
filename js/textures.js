@@ -1,8 +1,8 @@
 // Name lists
-const baseTexturePath = 'resources/textures/walls/';
-const baseDecalPath = 'resources/textures/decals/';
-const baseSpritePath = 'resources/sprites/';
-const baseViewModelPath = 'resources/viewmodels/';
+const baseTexturePath = 'resources/textures/walls';
+const baseDecalPath = 'resources/textures/decals';
+const baseSpritePath = 'resources/sprites';
+const baseViewModelPath = 'resources/viewmodels';
 
 const textureNames = [
     {'name': 'error', 'frames': 1, 'speed': 0},
@@ -29,82 +29,16 @@ const decalNames = [
 ];
 
 const spriteNames = [
-    [
-        ['doomguy/0.png'],
-        ['doomguy/1.png'],
-        ['doomguy/2.png'],
-        ['doomguy/3.png'],
-        ['doomguy/4.png'],
-        ['doomguy/5.png'],
-        ['doomguy/6.png'],
-        ['doomguy/7.png']
-    ],
-    [
-        ['nazi/0.png'],
-        ['nazi/1.png'],
-        ['nazi/2.png'],
-        ['nazi/3.png'],
-        ['nazi/4.png'],
-        ['nazi/5.png'],
-        ['nazi/6.png'],
-        ['nazi/7.png']
-    ],
-    [['spessman.png']],
-    [['shpee.png']],
-    [['blood.png']],
-    [
-        ['cat/0.png'],
-        ['cat/1.png'],
-        ['cat/2.png'],
-        ['cat/3.png'],
-        ['cat/4.png'],
-        ['cat/5.png'],
-        ['cat/6.png'],
-        ['cat/7.png']
-    ],
-    [
-        ['engie/0.png'],
-        ['engie/1.png'],
-        ['engie/2.png'],
-        ['engie/3.png'],
-        ['engie/4.png'],
-        ['engie/5.png'],
-        ['engie/6.png'],
-        ['engie/7.png'],
-        ['engie/8.png'],
-        ['engie/9.png'],
-        ['engie/10.png'],
-        ['engie/11.png'],
-        ['engie/12.png'],
-        ['engie/13.png'],
-        ['engie/14.png'],
-        ['engie/15.png'],
-        ['engie/16.png'],
-        ['engie/17.png'],
-        ['engie/18.png'],
-        ['engie/19.png'],
-        ['engie/20.png'],
-        ['engie/21.png'],
-        ['engie/22.png'],
-        ['engie/23.png']
-    ],
-    [
-        [
-        'explosion/0.png',
-        'explosion/1.png',
-        'explosion/2.png'
-        ]
-    ],
-    [
-        ['rocket/0.png'],
-        ['rocket/1.png'],
-        ['rocket/2.png'],
-        ['rocket/3.png'],
-        ['rocket/4.png'],
-        ['rocket/5.png'],
-        ['rocket/6.png'],
-        ['rocket/7.png']
-    ]
+    {'name': 'doomguy', 'groups': 8, 'frames': 1, 'speed': 0},
+    {'name': 'nazi', 'groups': 8, 'frames': 1, 'speed': 0},
+    {'name': 'spessman', 'groups': 1, 'frames': 1, 'speed': 0},
+    {'name': 'shpee', 'groups': 1, 'frames': 1, 'speed': 0},
+    {'name': 'blood', 'groups': 1, 'frames': 1, 'speed': 0},
+    {'name': 'cat', 'groups': 8, 'frames': 1, 'speed': 0},
+    {'name': 'engie', 'groups': 24, 'frames': 1, 'speed': 0},
+    {'name': 'explosion', 'groups': 1, 'frames': 3, 'speed': 0.1, 'fullBright': true},
+    {'name': 'rocket', 'groups': 8, 'frames': 1, 'speed': 0, 'fullBright': true},
+    {'name': 'engie-dance', 'groups': 1, 'frames': 7, 'speed': 0.1}
 ];
 
 const viewModelNames = [
@@ -180,7 +114,7 @@ decalNames.forEach(function (element) {
     numberOfResources += element.frames;
 });
 spriteNames.forEach(function (element) {
-    numberOfResources += element.length;
+    numberOfResources += element.groups * element.frames;
 });
 viewModelNames.forEach(function (element) {
     numberOfResources += element.length;
@@ -191,7 +125,7 @@ const maxDownloadProgress = 1 + numberOfResources;
 
 // Load missing texture first
 const errorImage = new Image();
-errorImage.src = `${baseTexturePath}${textureNames[0].name}/${0}.png`;
+errorImage.src = `${baseTexturePath}/${textureNames[0].name}/${0}.png`;
 errorImage.onload = function() { 
 
     minimapTextures = new Array(textureNames.length).fill(errorImage);
@@ -207,7 +141,7 @@ errorImage.onload = function() {
     textures = new Array(textureNames.length).fill([texture]);
     decals = new Array(decalNames.length).fill([texture]);
     sprites = new Array(spriteNames.length).fill([[texture]]);
-    viewmodels = new Array(viewModelNames.length).fill([texture]);
+    viewModels = new Array(viewModelNames.length).fill([texture]);
 
     loadTextures();
     loadDecals();
@@ -225,9 +159,9 @@ function loadTextures() {
         textures[i].frames = textureName.frames;
         textures[i].speed = textureName.speed;
 
-        for (let frame = 0; frame < textures[i].frames; frame++) {
+        for (let frame = 0; frame < textureName.frames; frame++) {
             let tempImage = new Image();
-            tempImage.src = `${baseTexturePath}${textureName.name}/${frame}.png`;
+            tempImage.src = `${baseTexturePath}/${textureName.name}/${frame}.png`;
         
             tempImage.onload = function() { 
                 minimapTextures[i] = tempImage;
@@ -257,9 +191,9 @@ function loadDecals() {
         decals[i].frames = decalName.frames;
         decals[i].speed = decalName.speed;
 
-        for (let frame = 0; frame < decals[i].frames; frame++) {
+        for (let frame = 0; frame < decalName.frames; frame++) {
             let tempImage = new Image();
-            tempImage.src = `${baseDecalPath}${decalName.name}/${frame}.png`;
+            tempImage.src = `${baseDecalPath}/${decalName.name}/${frame}.png`;
             
             tempImage.onload = function() {
                 tempCanvas.width = tempImage.width;
@@ -270,7 +204,7 @@ function loadDecals() {
         
                 let texture = new Texture(imageData.data, imageData.width, imageData.height);
         
-                decals[i] = texture;
+                decals[i][frame] = texture;
 
                 downloadProgress++;
             }
@@ -280,20 +214,22 @@ function loadDecals() {
 
 function loadSprites() {
     for (let i = 0; i < spriteNames.length; i++) {
+        
+        let spriteName = spriteNames[i];
 
-        sprites[i] = [];
+        sprites[i] = {};
+        sprites[i].groups = spriteName.groups;
+        sprites[i].fullBright = spriteName.fullBright != undefined ? spriteName.fullBright : false;
 
-        if (i === 7 || i === 8) sprites[i].fullBright = true;
-
-        for (let group = 0; group < spriteNames[i].length; group++) {
-
+        for (let group = 0; group < spriteName.groups; group++) {
+            
             sprites[i][group] = {};
-            sprites[i][group].frames = spriteNames[i][group].length;
-            sprites[i][group].speed = 0.1;
+            sprites[i][group].frames = spriteName.frames;
+            sprites[i][group].speed = spriteName.speed;
 
-            for (let frame = 0; frame < sprites[i][group].frames; frame++) {
+            for (let frame = 0; frame < spriteName.frames; frame++) {
                 let tempImage = new Image();
-                tempImage.src = baseSpritePath + spriteNames[i][group][frame];
+                tempImage.src = `${baseSpritePath}/${spriteName.name}/${group}/${frame}.png`;
     
                 tempImage.onload = function() {
                     tempCanvas.width = tempImage.width;
@@ -305,6 +241,7 @@ function loadSprites() {
                     let texture = new Texture(imageData.data, imageData.width, imageData.height);
         
                     sprites[i][group][frame] = texture;
+                    if (group == 0) console.log(i);
 
                     downloadProgress++;
                 }
@@ -322,7 +259,7 @@ function loadViewModels() {
 
         for (let frame = 0; frame < viewModels[i].frames; frame++) {
             let tempImage = new Image();
-            tempImage.src = baseViewModelPath + viewModelNames[i][frame];
+            tempImage.src = `${baseViewModelPath}/${viewModelNames[i][frame]}`;
             
             viewModels[i][frame] = tempImage;
     

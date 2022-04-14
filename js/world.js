@@ -10,6 +10,10 @@ function lightSwitch(name) {
     let light = presetWorld.lights.find(function (a) { return a.name === name });
     light.disabled = !light.disabled;
 
+    rebakeLight(light);
+}
+
+function rebakeLight(light) {
     let startLightmap = performance.now();
 
     simulateLightPropagation([light.layer]);
@@ -34,7 +38,7 @@ presetWorld = {
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,1,1,0],
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
         [0,3,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
-        [0,3,0,0,0,0,0,0,3,1,3,0,0,0,0,0,0,0,0,0,6,0,0,0,0,1,0],
+        [0,3,0,0,0,0,0,0,3,6,3,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0],
         [0,3,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
         [0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
         [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
@@ -44,8 +48,8 @@ presetWorld = {
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,0,4,0,4,4,4,4,4,4,4,4,4,0,4,0,4,4,4,4,4,0],
-        [0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
-        [0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
+        [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
+        [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
         [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,4,0,0,0],
         [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,4,4,4,0,0],
@@ -148,11 +152,13 @@ presetWorld = {
         {'name':'Rocket','x':2.5,'y':8.5,'rotation':0,'type':8},
         {'x':24.7,'y':7.7,'rotation':225,'type':6},
         {'x':21.3,'y':5.7,'rotation':315,'type':4},
+        {'x':23.5,'y':1.5,'rotation':0,'type':9},
+        // Music
         {'x':9.5,'y':13.5,'rotation':0,'sound':{'name':'vague_voices', 'volume': 0.4}},
         {'x':23.5,'y':1,'rotation':0,'sound':{'name':'radio_creepy', 'volume': 0.1, 'rolloffFactor': 2.5}},
         // Triggers
-        {'name':'','x':20,'y':9.2, 'onPress': () => { lightSwitch('test', {'r':0.4,'g':0.4,'b':0.4}) }},
-        {'name':'','x':23,'y':10.7, 'onPress': () => { lightSwitch('tunnel', {'r':0.1,'g':0.1,'b':0.1}) }},
+        {'x':20,'y':9.2, 'onPress': () => { lightSwitch('test') }},
+        {'x':23,'y':10.7, 'onPress': () => { lightSwitch('tunnel') }}
     ],
     'portals': [
         {0:{'x':9,'y':1},1:{'x':18,'y':1}},
@@ -271,7 +277,7 @@ function initializeWorld() {
         if (object.speedY == undefined) object.speedY = 0;
 
         if (object.type != undefined) {
-            object.spriteGroup = getSprite(object.type);
+            object.sprites = getSprite(object.type);
 
             if (object.origin == undefined && object.scale == undefined) {
                 switch(object.type) {
@@ -284,6 +290,7 @@ function initializeWorld() {
                     case 6: object.origin = -1.05; object.scale = 0.6; break; // Engie
                     case 7: object.origin = 0;     object.scale = 1;   break; // Explosion
                     case 8: object.origin = -1;    object.scale = 0.2; break; // Rocket
+                    case 9: object.origin = -1;    object.scale = 0.7; break; // Engie-dance
     
                     default: object.origin = -1; object.scale = 0.3;
                 }
