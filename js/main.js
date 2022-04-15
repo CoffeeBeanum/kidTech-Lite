@@ -106,6 +106,7 @@ function ControlState() {
     this.lookDown = false;
     this.use = false;
     this.useCooldown = false;
+    this.advanceRender = false;
     this.shoot = false;
     this.shootCooldown = false;
     this.info = true;
@@ -136,16 +137,31 @@ let uiCanvasHalfWidth = uiCanvas.width / 2;
 
 let frame = context.createImageData(canvas.width, canvas.height);
 
+let skyboxDone = false;
+let floorX;
+let floorY;
+let currentFloorY = 0;
+let currentFloorX = 0;
+let floorDone = false;
+let currentWallLine = 0;
+
 // Drawing funcs
 function drawScene() {
-    labelContext.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
-    uiContext.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+    if (currentControlState.advanceRender == true) {
+        // currentControlState.advanceRender = false;
 
-    drawSkybox();
+        labelContext.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+        uiContext.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
-    drawFrame();
+        if (skyboxDone == false) {
+            drawSkybox();
+            skyboxDone = true;
+        } else {
+            drawFrame();
+        }
 
-    drawUI();
+        // drawUI();
+    }
 }
 
 function drawSkybox() {
@@ -166,18 +182,24 @@ function drawFrame() {
     // DEBUG PROBE
     if (currentControlState.debug) probePrepareFrame = performance.now();
 
-    drawFloorFrame();
+    if (floorDone == false) {
+        drawFloorFrame();
+    }
 
     // DEBUG PROBE
     if (currentControlState.debug) probeRenderFloor = performance.now();
 
-    prepareWallFrame();
-    prepareObjects();
+    if (currentWallLine == 0 && floorDone == true) {
+        prepareWallFrame();
+        prepareObjects();
+    }
 
     // DEBUG PROBE
     if (currentControlState.debug) probePrepareRaycast = performance.now();
 
-    processBuffer();
+    if (floorDone == true) {
+        processBuffer();
+    }
 
     context.putImageData(frame, 0, 0);
 }
@@ -202,11 +224,16 @@ function drawFloorFrame() {
 
     calculateRayDirection(ray0);
     calculateRayDirection(ray1);
-    
+
     let posZ = 0.325 * canvas.height / screenRatio;
 
-    for (let onScreenY = 0; onScreenY < canvas.height; onScreenY++) {
-        drawFloorScanLine(onScreenY, ray0, ray1, posZ);
+    // for (let onScreenY = 0; onScreenY < canvas.height; onScreenY++) {
+        drawFloorScanLine(currentFloorY, ray0, ray1, posZ);
+    // }
+    
+    if (currentFloorY == canvas.height) {
+        currentFloorY = 0;
+        floorDone = true;
     }
 }
 
@@ -219,10 +246,12 @@ function drawFloorScanLine(onScreenY, ray0, ray1, posZ) {
     let floorStepX = stepFactor * (ray1.dirX - ray0.dirX);
     let floorStepY = stepFactor * (ray1.dirY - ray0.dirY);
 
-    let floorX = thisPlayer.x + rowDistance * ray0.dirX;
-    let floorY = thisPlayer.y + rowDistance * ray0.dirY;
+    if (currentFloorX == 0) {
+        floorX = thisPlayer.x + rowDistance * ray0.dirX;
+        floorY = thisPlayer.y + rowDistance * ray0.dirY;
+    }
 
-    for (let onScreenX = 0; onScreenX < canvas.width; onScreenX++) {
+    // for (let onScreenX = 0; onScreenX < canvas.width; onScreenX++) {
         let cellX = Math.floor(floorX);
         let cellY = Math.floor(floorY);
 
@@ -235,17 +264,24 @@ function drawFloorScanLine(onScreenY, ray0, ray1, posZ) {
 
             // Draw floor
             if (cell.floor > 0 && onScreenY > horizon) {
-                preparePlanarPixel(cell.floor, onScreenX, onScreenY, offsetX, offsetY, cell.lightmap);
+                preparePlanarPixel(cell.floor, currentFloorX, onScreenY, offsetX, offsetY, cell.lightmap);
             }
 
             // Draw ceiling
             if (cell.ceiling > 0 && onScreenY < horizon) {
-                preparePlanarPixel(cell.ceiling, onScreenX, onScreenY, offsetX, offsetY, cell.lightmap);
+                preparePlanarPixel(cell.ceiling, currentFloorX, onScreenY, offsetX, offsetY, cell.lightmap);
             }
         }
         
         floorX += floorStepX;
         floorY += floorStepY;
+    // }
+
+    currentFloorX++;
+
+    if (currentFloorX == canvas.width) {
+        currentFloorX = 0;
+        currentFloorY++;
     }
 }
 
@@ -558,10 +594,16 @@ function processBuffer() {
         return b.distance - a.distance;
     });
 
-    for (let i = 0, limit = buffer.length; i < limit; i++) {
-        let temp = buffer[i];
-        if (temp instanceof ProcessedRay) drawScanLine(temp);
-        else drawObject(temp);
+    let temp = buffer[currentWallLine];
+    if (temp instanceof ProcessedRay) drawScanLine(temp);
+    else drawObject(temp);
+    
+    currentWallLine++;
+
+    if (currentWallLine == buffer.length) {
+        currentWallLine = 0;
+        floorDone = false;
+        skyboxDone = false;
     }
     
     // DEBUG PROBE
@@ -1174,6 +1216,7 @@ document.addEventListener('keydown', e => {
         if (e.code === "ArrowUp") currentControlState.lookUp = true;
         if (e.code === "ArrowDown") currentControlState.lookDown = true;
         if (e.code === "KeyE") currentControlState.use = true;
+        if (e.code === "KeyF") currentControlState.advanceRender = !currentControlState.advanceRender;
         if (e.code === "KeyV") currentControlState.noclip = !currentControlState.noclip;
         if (e.code === "KeyP") {
             currentControlState.perspective = !currentControlState.perspective;
@@ -1329,7 +1372,7 @@ function renderLoop() {
 
         drawScene();
 
-        animationFrameCounter = performance.now() / 10;
+        // animationFrameCounter = performance.now() / 10;
     } else {
         updateLoadingProgress();
     }
