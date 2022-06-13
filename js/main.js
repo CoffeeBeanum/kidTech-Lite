@@ -161,7 +161,7 @@ function drawSkybox() {
 }
 
 function drawFrame() {
-    frame = context.getImageData(0, 0, canvas.width + 1, canvas.height);
+    frame = context.getImageData(0, 0, canvas.width, canvas.height);
 
     // DEBUG PROBE
     if (currentControlState.debug) probePrepareFrame = performance.now();
@@ -264,7 +264,7 @@ function drawPlanarPixel(texture, onScreenX, onScreenY, offsetX, offsetY, lightm
     let textureX = Math.floor(texture.width * offsetX);
     let textureY = Math.floor(texture.height * offsetY);
 
-    let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + onScreenX) * 4;
+    let canvasIndex = Math.floor(canvas.width * onScreenY + onScreenX) * 4;
     let textureIndex = Math.floor(texture.width * textureY + textureX) * 4;
     
     let [finalR, finalG, finalB, finalA] = texture.getPixel(textureIndex);
@@ -330,7 +330,7 @@ function prepareWallFrame() {
     buffer = [];
 
     // Prepare all wall rays
-    for (let onScreenX = 0; onScreenX <= canvas.width; onScreenX++) {
+    for (let onScreenX = 0; onScreenX < canvas.width; onScreenX++) {
         calculateScanLine(onScreenX);
     }
 }
@@ -593,7 +593,7 @@ function drawScanLine(ray) {
         let textureY = (onScreenY - horizon + halfScreenSize) / ray.onScreenSize;
 
         // Get imageData array indexes
-        let canvasIndex = Math.floor((canvas.width + 1) * onScreenY + ray.onScreenX) * 4;
+        let canvasIndex = Math.floor(canvas.width * onScreenY + ray.onScreenX) * 4;
         let textureIndex = Math.floor(texture.width * Math.floor(textureY * texture.height) + textureX) * 4;
 
         let [finalR, finalG, finalB, finalA] = texture.getPixel(textureIndex);
@@ -741,18 +741,18 @@ function drawObject(object) {
         let startY = Math.floor(center - spriteHalfHeight);
         let stopY = Math.floor(startY + onScreenHeight);
 
-        for (let onScreenY = (startY > 0 ? startY : 0); onScreenY <= (stopY < canvas.height ? stopY : canvas.height); onScreenY++) {
+        for (let onScreenY = (startY > 0 ? startY : 0); onScreenY <= (stopY < canvas.height ? stopY : canvas.height - 1); onScreenY++) {
             let spriteY = (onScreenY - startY) / onScreenHeight;
 
             let startX = Math.ceil(spriteScreenX - spriteHalfWidth);
             let stopX = Math.ceil(spriteScreenX + spriteHalfWidth) - 1;
 
-            for (let onScreenX = (startX > 0 ? startX : 0); onScreenX <= (stopX < canvas.width ? stopX : canvas.width); onScreenX++) {
+            for (let onScreenX = (startX > 0 ? startX : 0); onScreenX <= (stopX < canvas.width ? stopX : canvas.width - 1); onScreenX++) {
 
                 let spriteX = (onScreenX - (spriteScreenX - spriteHalfWidth)) / onScreenWidth;
 
                 // Get imageData array indexes
-                let canvasIndex = ((canvas.width + 1) * onScreenY + onScreenX) * 4;
+                let canvasIndex = (canvas.width * onScreenY + onScreenX) * 4;
                 let spriteIndex = (sprite.width * Math.floor(spriteY * sprite.height) + Math.floor(spriteX * sprite.width)) * 4;
 
                 let finalA = sprite.data[spriteIndex + 3];

@@ -241,7 +241,6 @@ function loadSprites() {
                     let texture = new Texture(imageData.data, imageData.width, imageData.height);
         
                     sprites[i][group][frame] = texture;
-                    if (group == 0) console.log(i);
 
                     downloadProgress++;
                 }
