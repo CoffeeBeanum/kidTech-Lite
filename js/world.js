@@ -46,7 +46,7 @@ presetWorld = {
     ],
     'floor': [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
+        [0,0,4,4,4,4,0,4,4,9,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,0,4,0,4,4,4,4,4,4,4,4,4,0,4,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
         [0,0,4,4,4,4,0,4,4,4,4,4,4,4,4,4,4,4,4,4,0,4,4,4,4,4,0],
@@ -177,8 +177,8 @@ const Sound = function() {
     this.sound = new Howl({
         src: ['resources/sounds/sprite.mp3'],
         sprite: {
-          vague_voices: [0, 131814, true],
-          radio_creepy: [132814, 39789, true]
+          vague_voices: [0, 102582.85714285713, true],
+          radio_creepy: [104000, 329012.2448979592, true]
         }
     });
 };
@@ -189,7 +189,7 @@ Sound.prototype = {
         if (soundId !== undefined) {
             this.sound.once('play', function() {
                 // Set the position of the speaker in 3D space.
-                this.sound.pos(x, -0.3, y, soundId);
+                this.sound.pos(x, -0.5, y, soundId);
                 this.sound.volume(volume, soundId);
                 
                 this.sound.pannerAttr({
@@ -201,6 +201,292 @@ Sound.prototype = {
             }.bind(this), soundId);
         }
     }   
+}
+
+function contactNodeAvailable(chunks) {
+    let nodeAvailable = false;
+
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        let chunk = chunks[chunkIndex];
+        if (hasFreeContactNode(chunk)) {
+            nodeAvailable = true;
+        }
+    }
+
+    return nodeAvailable;
+}
+
+function hasFreeContactNode(chunk) {
+    let hasFreeNode = false;
+
+    for (let nodeIndex = 0; nodeIndex < chunk.contactNodes.length; nodeIndex++) {
+        let node = chunk.contactNodes[nodeIndex];
+        if (node.connected == undefined) {
+            hasFreeNode = true;
+        }
+    }
+
+    return hasFreeNode;
+}
+
+const getJSON = async url => {
+    const response = await fetch(url);
+    return response.json(); // get JSON from the response 
+}
+
+function shuffle(array) {
+    let i = array.length;
+    while (i--) {
+        const ri = Math.floor(Math.random() * i);
+        [array[i], array[ri]] = [array[ri], array[i]];
+    }
+    return array;
+}
+
+function rotateCW(array) {
+    var result = [];
+    array.forEach(function (a, i, aa) {
+        a.forEach(function (b, j, bb) {
+            result[bb.length - j - 1] = result[bb.length - j - 1] || [];
+            result[bb.length - j - 1][i] = b;
+        });
+    });
+    return result;
+}
+
+function rotateCCW(array) {
+    var result = [];
+    array.forEach(function (a, i, aa) {
+        a.forEach(function (b, j, bb) {
+            result[j] = result[j] || [];
+            result[j][aa.length - i - 1] = b;
+        });
+    });
+    return result;
+}
+
+function rotatePoint(cx, cy, x, y, angle) {
+    var radians = (Math.PI / 180) * angle,
+        cos = Math.cos(radians),
+        sin = Math.sin(radians),
+        nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
+        ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+    return [nx, ny];
+}
+
+function rotateChunk(chunk, targetSide, side) {
+    let rotations = 0;
+
+    while (Math.abs(targetSide - side) != 2) {
+        chunk.walls = rotateCCW(chunk.walls);
+        chunk.floor = rotateCCW(chunk.floor);
+        chunk.ceiling = rotateCCW(chunk.ceiling);
+
+        rotations++;
+        side++;
+        if (side > 3) side = 0;
+    }
+
+    let angle = -90 * rotations;
+    let centerX = chunk.walls[0].length / 2 - 0.5;
+    let centerY = chunk.walls.length / 2 - 0.5;
+
+    for (let nodeIndex = 0; nodeIndex < chunk.contactNodes.length; nodeIndex++) {
+        let node = chunk.contactNodes[nodeIndex];
+
+        let coordinates = rotatePoint(centerX, centerY, node.x, node.y, angle);
+        node.x = Math.round(coordinates[0]);
+        node.y = Math.round(coordinates[1]);
+
+        node.side = (node.side + rotations) % 4;
+
+        chunk.contactNodes[nodeIndex] = node;
+    }
+    
+    for (let decalIndex = 0; decalIndex < chunk.decals.length; decalIndex++) {
+        let decal = chunk.decals[decalIndex];
+
+        let coordinates = rotatePoint(centerX, centerY, decal.x, decal.y, angle);
+        decal.x = Math.round(coordinates[0]);
+        decal.y = Math.round(coordinates[1]);
+
+        decal.face = (decal.face + rotations) % 4;
+
+        chunk.decals[decalIndex] = decal;
+    }
+    
+    for (let lightIndex = 0; lightIndex < chunk.lights.length; lightIndex++) {
+        let light = chunk.lights[lightIndex];
+
+        let coordinates = rotatePoint(centerX, centerY, light.x, light.y, angle);
+        light.x = Math.round(coordinates[0]);
+        light.y = Math.round(coordinates[1]);
+
+        light.face = (light.face + rotations) % 4;
+
+        chunk.lights[lightIndex] = light;
+    }
+
+    console.log(rotations);
+
+    return chunk;
+}
+
+function generateWorld() {
+    getJSON("js/chunks.json")
+    .then(presetChunks => {
+        let startWorldGen = performance.now();
+
+        let chunks = [];
+
+        let initialChunk = presetChunks[0];
+        initialChunk.x = 0;
+        initialChunk.y = 0;
+        chunks.push(initialChunk);
+
+        let generationDone = false;
+
+        while (!generationDone) {
+            let addedChunk = false;
+
+            for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+                let chunk = JSON.parse(JSON.stringify(chunks[chunkIndex]));
+
+                for (let nodeIndex = 0; nodeIndex < chunk.contactNodes.length; nodeIndex++) {
+                    let node = chunk.contactNodes[nodeIndex];
+
+                    if (node.connected == undefined) {
+                        // let shuffledChunks = shuffle(presetChunks);
+                        let shuffledChunks = [presetChunks[1]];
+
+                        for (let newChunkIndex = 0; newChunkIndex < shuffledChunks.length; newChunkIndex++) {
+                            let newChunk = JSON.parse(JSON.stringify(shuffledChunks[newChunkIndex]));
+
+                            for (let newNodeIndex = 0; newNodeIndex < newChunk.contactNodes.length; newNodeIndex++) {
+                                let newNode = newChunk.contactNodes[newNodeIndex];
+
+                                if (newNode.size == node.size) {
+
+                                    if (Math.abs(node.side - newNode.side) != 2) {
+                                        console.log(`Pre-rotation: ${node.side}:${newNode.side}`);
+
+                                        newChunk = rotateChunk(newChunk, node.side, newNode.side);
+
+                                        console.log(`Post-rotation: ${node.side}:${newNode.side}`);
+                                    }
+
+                                    node.connected = newChunk.name;
+                                    newNode.connected = chunk.name;
+
+                                    chunk.contactNodes[nodeIndex] = node;
+                                    chunks[chunkIndex] = chunk;
+                                    newChunk.contactNodes[newNodeIndex] = newNode;
+
+                                    newChunk.x = chunk.x + node.x - newNode.x;
+                                    newChunk.y = chunk.y + node.y - newNode.y;
+
+                                    switch (newNode.side) {
+                                        case 0: newChunk.x += 1; break;
+                                        case 1: newChunk.y += 1; break;
+                                        case 2: newChunk.x -= 1; break;
+                                        case 3: newChunk.y -= 1; break;
+                                        default: break;
+                                    }
+
+                                    console.log(newChunk);
+
+                                    chunks.push(newChunk);
+
+                                    addedChunk = true;
+                                }
+
+                                if (addedChunk) break;
+                            }
+
+                            if (addedChunk) break;
+                        }
+                    }
+
+                    if (addedChunk || generationDone) break;
+                }
+
+                if (addedChunk || generationDone) break;
+            }
+
+            if (!addedChunk) {
+                generationDone = true;
+            }
+        }
+
+        presetWorld.walls = [];
+        presetWorld.floor = [];
+        presetWorld.ceiling = [];
+        presetWorld.decals = [];
+        presetWorld.portals = [];
+        // presetWorld.objects = [];
+        presetWorld.lights = [];
+        presetWorld.lightmapOverrides = [];
+
+        let minX = Number.MAX_SAFE_INTEGER;
+        let minY = Number.MAX_SAFE_INTEGER;
+        let maxX = Number.MIN_SAFE_INTEGER;
+        let maxY = Number.MIN_SAFE_INTEGER;
+
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+            let chunk = chunks[chunkIndex];
+
+            if (chunk.x < minX) minX = chunk.x;
+            if (chunk.y < minY) minY = chunk.y;
+            if (chunk.x + chunk.walls[0].length > maxX) maxX = chunk.x + chunk.walls[0].length;
+            if (chunk.y + chunk.walls.length > maxY) maxY = chunk.y + chunk.walls.length;
+        }
+
+        maxX -= minX;
+        maxY -= minY;
+
+        for (let y = 0; y < maxY; y++) {
+                presetWorld.walls[y] = new Array(maxX).fill(0);
+                presetWorld.floor[y] = new Array(maxX).fill(0);
+                presetWorld.ceiling[y] = new Array(maxX).fill(0);
+        }
+
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+            let chunk = chunks[chunkIndex];
+
+            for (let y = 0; y < chunk.walls.length; y++) {
+                for (let x = 0; x < chunk.walls[0].length; x++) {
+                    let worldX = chunk.x + x - minX;
+                    let worldY = chunk.y + y - minY;
+
+                    presetWorld.walls[worldY][worldX] = chunk.walls[y][x];
+                    presetWorld.floor[worldY][worldX] = chunk.floor[y][x];
+                    presetWorld.ceiling[worldY][worldX] = chunk.ceiling[y][x];
+                }
+            }
+
+            for (let decalIndex = 0; decalIndex < chunk.decals.length; decalIndex++) {
+                let decal = chunk.decals[decalIndex];
+
+                decal.x += chunk.x - minX;
+                decal.y += chunk.y - minY;
+
+                presetWorld.decals.push(decal);
+            }
+
+            for (let lightIndex = 0; lightIndex < chunk.lights.length; lightIndex++) {
+                let light = chunk.lights[lightIndex];
+
+                light.x += chunk.x - minX;
+                light.y += chunk.y - minY;
+
+                presetWorld.lights.push(light);
+            }
+        }
+
+        console.log(`World generated in ${(performance.now() - startWorldGen).toFixed(0)}ms`);
+
+        initializeWorld();
+    });
 }
 
 // Optimized world object used in-game
@@ -337,14 +623,17 @@ const lightDiagonalFalloffFactor = 0.8;
 const baseLightLevel = {'r':0,'g':0,'b':0};
 const ambientLightLevel = {'r':0.1,'g':0.1,'b':0.15};
 
-const lightmapHeight = presetWorld.walls.length + 1;
-const lightmapWidth = presetWorld.walls[0].length + 1;
+let lightmapHeight = 0;
+let lightmapWidth = 0;
 
 let bufferLightmap = [];
 let tempLightmap = [];
-let finalLightmap = JSON.parse(JSON.stringify(new Array(lightmapHeight * lightmapWidth).fill(baseLightLevel)));
+let finalLightmap = [];
 
 function simulateLightPropagation(layers) {
+    lightmapHeight = presetWorld.walls.length + 1;
+    lightmapWidth = presetWorld.walls[0].length + 1;
+
     finalLightmap = JSON.parse(JSON.stringify(new Array(lightmapHeight * lightmapWidth).fill(baseLightLevel)));
 
     if (layers === undefined) bufferLightmap = [...Array(presetWorld.lights.length)].map(() => new Array(lightmapHeight * lightmapWidth).fill({'r':0,'g':0,'b':0}));
@@ -452,7 +741,8 @@ function simulateLightPropagationFor(i) {
     }
 }
 
-initializeWorld();
+// initializeWorld();
+generateWorld();
 
 function faceToVertices(face) {
     switch (face) {

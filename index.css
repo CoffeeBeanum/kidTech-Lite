@@ -51,7 +51,7 @@
 
 body, html {
     height: 100%;
-    font-family: 'Oswald', sans-serif;
+    font-family: 'VT323', sans-serif;
     overflow: hidden;
     background-color: black;
     color: whitesmoke;
@@ -93,13 +93,19 @@ canvas {
 
 #info-label {
     left: 10pt;
-    font-size: 15pt;
+    font-size: 24pt;
+}
+
+#devtime-label {
+    top: 35px;
+    left: 10pt;
+    font-size: 14pt;
 }
 
 #changelog-label {
-    top: 50px;
+    top: 70px;
     left: 10pt;
-    font-size: 12pt;
+    font-size: 14pt;
 }
 
 #info-label-container {
@@ -107,13 +113,14 @@ canvas {
     right: 0;
     top: -20pt;
     width: 100%;
-    text-shadow: 0 0 5px black;
+    text-shadow: 2px 2px 0px black;
     visibility: hidden;
     opacity: 0;
 }
 
 #debug-container {
     font-family: 'VT323';
+    text-shadow: 2px 2px 0px black;
     position: absolute;
     right: 20pt;
     bottom: 20pt;
@@ -139,7 +146,6 @@ canvas {
     overflow: hidden;
     white-space: nowrap;
     background-color: whitesmoke;
-    border-radius: 4pt;
 }
 
 .probe {
@@ -161,22 +167,18 @@ canvas {
 }
 
 #probe3, #probe3LegendColor {
-    background-color: peru;
-}
-
-#probe4, #probe4LegendColor {
     background-color: lightseagreen;
 }
 
-#probe5, #probe5LegendColor {
+#probe4, #probe4LegendColor {
     background-color: purple;
 }
 
-#probe6, #probe6LegendColor {
+#probe5, #probe5LegendColor {
     background-color: green;
 }
 
-#probe7, #probe7LegendColor {
+#probe6, #probe6LegendColor {
     background-color: gray;
 }
 
@@ -202,18 +204,18 @@ canvas {
     top: 50%;
     -webkit-transform: translate(-20%, -50%);
     transform: translate(-20%, -50%);
-    width: 51vmin;
+    width: 56vmin;
     visibility: visible;
     opacity: 0;
     font-size: 6vmin;
-    text-shadow: 0 0 5px black;
+    text-shadow: 2px 2px 0px black;
 }
 
 #progress-bar {
     background-color: whitesmoke;
     height: 2vmin;
     width: 0;
-    border-radius: 2pt;
-    box-shadow: 0 0 5px black;
+    margin-top: -6px;
+    box-shadow: 2px 2px 0 black;
     transition: width 0.5s ease-in-out 0.01s;
 }

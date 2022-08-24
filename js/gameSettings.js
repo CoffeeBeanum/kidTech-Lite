@@ -32,7 +32,6 @@ const probe3 = document.getElementById('probe3');
 const probe4 = document.getElementById('probe4');
 const probe5 = document.getElementById('probe5');
 const probe6 = document.getElementById('probe6');
-const probe7 = document.getElementById('probe7');
 
 // Rendering settings
 const drawDistance = 100;
@@ -60,15 +59,17 @@ const viewModelLightFactor = 50;
 // Camera settings
 const cameraMouseSensitivity = 0.2;
 const cameraArrowsSensitivity = 0.15;
-const fovFactor = 2.14;
+const fov = 90;
+const fovFactor = (0.5 / Math.tan(fov / 2 / 180 * Math.PI)); // Distance to virtual screen
+const floorFovFactor = fovFactor / 2; // Precompute to save performance
 
 export { 
     canvas, context, uiCanvas, uiContext, labelCanvas, labelContext, uiScaleFactor, 
     debugContainer, debugPerformanceLabel, debugStateLabel, secondaryInfoContainer, 
-    probe1, probe2, probe3, probe4, probe5, probe6, probe7, 
+    probe1, probe2, probe3, probe4, probe5, probe6, 
     drawDistance, maxHorizonSkew, 
     minimapOffset, minimapCellSize, minimapObjectSize, minimapFovSize,
     playerMaxSpeed, playerAcceleration, playerFriction, playerSize, playerInteractionRange,
     viewModelSizeRatio, viewModelBobAmplitude, viewModelBobSpeed, viewModelLightFactor,
-    cameraMouseSensitivity, cameraArrowsSensitivity, fovFactor
+    cameraMouseSensitivity, cameraArrowsSensitivity, fov, fovFactor, floorFovFactor
 }

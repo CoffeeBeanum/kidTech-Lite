@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en-US">
 <head>
-    <title>kidTech-Lite</title>
+    <title>kofyTech-Lite</title>
 
     <link rel="icon" href="favicon.ico">
 
@@ -19,15 +19,17 @@
 </div>
 
 <div id="info-label-container">
-    <div class="info-label" id="info-label">kidTech-Lite Alpha 9</div>
+    <div class="info-label" id="info-label">kofyTech-Lite</div>
+    <div class="info-label" id="devtime-label">v0.9.0</div>
     <div id="secondary-info-container">
         <div class="info-label" id="changelog-label">
-            Press [P] to activate perspective compensation<br>
+            Press [P] to toggle perspective compensation<br>
             Hold [M] to view map<br>
             Press [E] to interact<br>
             Press [I] to toggle info<br>
             Press [`] to toggle debug monitor<br>
             <br>Changelog:<br>
+            - Drawing optimizations<br>
             - Material support<br>
             - Bugfixes</div>
     </div>
@@ -45,7 +47,6 @@
         <div class="probe" id="probe4"></div>
         <div class="probe" id="probe5"></div>
         <div class="probe" id="probe6"></div>
-        <div class="probe" id="probe7"></div>
     </div>
     <div id="probe-legend-container">
         <div class="probe-legend">
@@ -58,22 +59,18 @@
         </div>
         <div class="probe-legend">
             <div class="probe-legend-color" id="probe3LegendColor"></div>
-            Render floor
+            Prepare raycast + Draw floor
         </div>
         <div class="probe-legend">
             <div class="probe-legend-color" id="probe4LegendColor"></div>
-            Prepare raycast
-        </div>
-        <div class="probe-legend">
-            <div class="probe-legend-color" id="probe5LegendColor"></div>
             Render raycast
         </div>
         <div class="probe-legend">
-            <div class="probe-legend-color" id="probe6LegendColor"></div>
+            <div class="probe-legend-color" id="probe5LegendColor"></div>
             Render UI
         </div>
         <div class="probe-legend">
-            <div class="probe-legend-color" id="probe7LegendColor"></div>
+            <div class="probe-legend-color" id="probe6LegendColor"></div>
             Other
         </div>
     </div>

@@ -5,7 +5,7 @@ const baseSpritePath = 'resources/sprites';
 const baseViewModelPath = 'resources/viewmodels';
 
 const textureNames = [
-    {'name': 'error', 'frames': 1, 'speed': 0},
+    {'name': 'error', 'frames': 1, 'speed': 0, 'fullBright': true},
     {'name': 'brick_wall', 'frames': 1, 'speed': 0},
     {'name': 'metal_arch', 'frames': 1, 'speed': 0},
     {'name': 'metal_window', 'frames': 1, 'speed': 0},
@@ -52,25 +52,25 @@ const viewModelNames = [
 ];
 
 const materials = {
-    'default': function(data, textureIndex) {
+    default: function(data, textureIndex) {
         return [data[textureIndex], 
                 data[textureIndex + 1], 
                 data[textureIndex + 2], 
                 data[textureIndex + 3]]
     },
-    'cyberpunk': function(data, textureIndex) {
+    cyberpunk: function(data, textureIndex) {
         return [data[textureIndex] + Math.round(Math.random() * 100), 
                 data[textureIndex + 1] + Math.round(Math.random() * 25), 
                 data[textureIndex + 2], 
                 data[textureIndex + 3]]
     },
-    'hologram': function(data, textureIndex) {
+    hologram: function(data, textureIndex) {
         return [data[textureIndex] - 50, 
                 data[textureIndex + 1], 
                 data[textureIndex + 2], 
                 data[textureIndex + 3] - Math.round(Math.random() * 150)]
     },
-    'inverted': function(data, textureIndex) {
+    inverted: function(data, textureIndex) {
         return [255 - data[textureIndex], 
                 255 - data[textureIndex + 1], 
                 255 - data[textureIndex + 2], 
@@ -81,12 +81,11 @@ const materials = {
 const tempCanvas = document.getElementById("temp-canvas");
 const tempContext = tempCanvas.getContext("2d", { alpha: true });
 
-function Texture(data, width, height) {
+function Texture(data, width, height, material) {
     this.data = data;
     this.width = width;
     this.height = height;
-
-    this.material = materials.default;
+    this.material = materials[material != undefined ? material : 'default'];
 
     this.getPixel = function(textureIndex) {
         return this.material(data, textureIndex);
@@ -123,33 +122,12 @@ viewModelNames.forEach(function (element) {
 let downloadProgress = 0;
 const maxDownloadProgress = 1 + numberOfResources;
 
-// Load missing texture first
-const errorImage = new Image();
-errorImage.src = `${baseTexturePath}/${textureNames[0].name}/${0}.png`;
-errorImage.onload = function() { 
-
-    minimapTextures = new Array(textureNames.length).fill(errorImage);
-
-    tempCanvas.width = errorImage.width;
-    tempCanvas.height = errorImage.height;
-    tempContext.drawImage(errorImage, 0, 0);
-
-    let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-
-    let texture = new Texture(imageData.data, imageData.width, imageData.height);
-
-    textures = new Array(textureNames.length).fill([texture]);
-    decals = new Array(decalNames.length).fill([texture]);
-    sprites = new Array(spriteNames.length).fill([[texture]]);
-    viewModels = new Array(viewModelNames.length).fill([texture]);
-
-    loadTextures();
-    loadDecals();
-    loadSprites();
-    loadViewModels();
-}
-
 // Loading functions
+loadTextures();
+loadDecals();
+loadSprites();
+loadViewModels();
+
 function loadTextures() {
     for (let i = 0; i < textureNames.length; i++) {
         
@@ -172,9 +150,10 @@ function loadTextures() {
         
                 let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
         
-                let texture = new Texture(imageData.data, imageData.width, imageData.height);
+                let texture = new Texture(imageData.data, imageData.width, imageData.height, textureName.material);
         
                 textures[i][frame] = texture;
+                textures[i][frame].fullBright = textureName.fullBright != undefined ? textureName.fullBright : false;
 
                 downloadProgress++;
             }
@@ -202,9 +181,10 @@ function loadDecals() {
         
                 let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
         
-                let texture = new Texture(imageData.data, imageData.width, imageData.height);
+                let texture = new Texture(imageData.data, imageData.width, imageData.height, decalName.material);
         
                 decals[i][frame] = texture;
+                decals[i][frame].fullBright = decalName.fullBright != undefined ? decalName.fullBright : false;
 
                 downloadProgress++;
             }
@@ -238,7 +218,7 @@ function loadSprites() {
         
                     let imageData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
         
-                    let texture = new Texture(imageData.data, imageData.width, imageData.height);
+                    let texture = new Texture(imageData.data, imageData.width, imageData.height, spriteName.material);
         
                     sprites[i][group][frame] = texture;
 
