@@ -741,8 +741,8 @@ function simulateLightPropagationFor(i) {
     }
 }
 
-// initializeWorld();
-generateWorld();
+initializeWorld();
+// generateWorld();
 
 function faceToVertices(face) {
     switch (face) {
@@ -780,11 +780,11 @@ function setBufferLightmapCell(i, x, y, value) {
 
 // World cell functions
 function getWorldCell(x, y) {
-    return world.cells[y * world.width + x];
+    return world.cells[Math.trunc(y) * world.width + Math.trunc(x)];
 }
 
 function setWorldCell(x, y, cell) {
-    world.cells[y * world.width + x] = cell;
+    world.cells[Math.trunc(y) * world.width + Math.trunc(x)] = cell;
 }
 
 // Lightmap cell functions
@@ -822,4 +822,4 @@ Number.prototype.toFixedNumber = function(digits, base){
     return Math.round(this*pow) / pow;
 }
 
-export { world, faceToVertices, initializeWorld }
+export { world, getWorldCell, faceToVertices, initializeWorld }

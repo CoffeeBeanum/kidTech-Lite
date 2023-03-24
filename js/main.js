@@ -1,7 +1,7 @@
 import { piRatio, radians90Deg } from './constants.js'
-import { world, faceToVertices } from './world.js'
+import { world, getWorldCell, faceToVertices } from './world.js'
 import { 
-    context, canvas, uiContext, uiCanvas, labelContext, labelCanvas, uiScaleFactor, 
+    canvas, context, uiContext, uiCanvas, labelContext, labelCanvas, uiScaleFactor, 
     debugContainer, debugPerformanceLabel, debugStateLabel, secondaryInfoContainer, 
     probe1, probe2, probe3, probe4, probe5, probe6, 
     drawDistance, maxHorizonSkew, 
@@ -10,7 +10,9 @@ import {
     viewModelSizeRatio, viewModelBobAmplitude, viewModelBobSpeed, viewModelLightFactor,
     cameraMouseSensitivity, cameraArrowsSensitivity, fov, fovFactor, floorFovFactor
 } from './gameSettings.js'
-import { tintImage } from './utils/tint.js'
+import { tintImage } from './libs/tint.js'
+
+// import * as renderer from './renderer.js'
 
 // System lets
 let frameStart;
@@ -139,6 +141,8 @@ let posZ = floorFovFactor * canvas.height / screenRatio;
 
 let frame = context.createImageData(canvas.width, canvas.height);
 
+render.setOutput([canvas.width, canvas.height]);
+
 // Drawing funcs
 function drawScene() {
     labelContext.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
@@ -169,8 +173,10 @@ function drawFrame() {
     // DEBUG PROBE
     if (currentControlState.debug) probePrepareFrame = performance.now();
 
+    // buffer = [];
+    // renderer.drawFrame(buffer, thisPlayer);
     prepareWallFrame();
-    prepareObjects();
+    // prepareObjects();
 
     // DEBUG PROBE
     if (currentControlState.debug) probePrepareRaycast = performance.now();
@@ -572,12 +578,45 @@ function processBuffer() {
     buffer.sort(function (a, b) {
         return b.distance - a.distance;
     });
+    buffer.sort(function (a, b) {
+        return a.onScreenX - b.onScreenX;
+    });
+    // buffer = buffer.filter((value, index, self) =>
+    //     index === self.findIndex((t) => (
+    //         t.onScreenX === value.onScreenX
+    //     ))
+    // );
 
-    for (let i = 0, limit = buffer.length; i < limit; i++) {
-        let temp = buffer[i];
-        if (temp instanceof ProcessedRay) drawScanLine(temp);
-        else drawObject(temp);
-    }
+    let arrayOnScreenX     = buffer.map(ray => ray.onScreenX);
+    let arrayFirstScanIndex = Array.from(Array(canvas.width).keys()).map(index => arrayOnScreenX.indexOf(index));
+    let arrayTextureIndex  = buffer.map(ray => ray.cell.wall);
+    let arrayTextureX      = buffer.map(ray => ray.textureX);
+    let arraySide          = buffer.map(ray => ray.side);
+    let arrayDistance      = buffer.map(ray => ray.distance);
+    let arrayOnScreenSize  = buffer.map(ray => ray.onScreenSize);
+    let arrayFace          = buffer.map(ray => ray.face);
+    let arrayLightmap      = buffer.map(ray => [
+        [ray.cell.lightmap[0].r, ray.cell.lightmap[0].g, ray.cell.lightmap[0].b],
+        [ray.cell.lightmap[1].r, ray.cell.lightmap[1].g, ray.cell.lightmap[1].b],
+        [ray.cell.lightmap[2].r, ray.cell.lightmap[2].g, ray.cell.lightmap[2].b],
+        [ray.cell.lightmap[3].r, ray.cell.lightmap[3].g, ray.cell.lightmap[3].b],
+    ]).flat();
+    
+    let arrayMegaTextureIndex = arrayTextureIndex.map(type => getMegaTextureIndex(type, animationFrameCounter));
+    
+    // console.log(arrayOnScreenX);
+    // console.log(Array.from(Array(canvas.width).keys()));
+    // console.log(arrayFirstScanIndex);
+    // guginga();
+
+    render.setConstants({ size: buffer.length, height: canvas.height, textureData: textureData, textureDimentions: textureDimentions });
+    render(horizon, arrayFirstScanIndex, arrayTextureX, arrayOnScreenSize, arrayMegaTextureIndex, arrayTextureIndex, arrayFace, arrayLightmap);
+
+    // for (let i = 0, limit = buffer.length; i < limit; i++) {
+    //     let temp = buffer[i];
+    //     if (temp instanceof ProcessedRay) drawScanLine(temp);
+    //     else drawObject(temp);
+    // }
     
     // DEBUG PROBE
     if (currentControlState.debug) probeRenderRaycast = performance.now();
@@ -990,6 +1029,7 @@ function updateUserInput() {
 
     // Perspective distortion compensation
     if (currentControlState.perspective) {
+        render.canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvasHalfHeight) / 10}deg) scale(1.165)`;
         canvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvasHalfHeight) / 10}deg) scale(1.165)`;
         labelCanvas.style.transform = `perspective(1000px) rotateX(${(horizon - canvasHalfHeight) / 10}deg) scale(1.165)`;
     }
@@ -1201,6 +1241,7 @@ document.addEventListener('keydown', e => {
         if (e.code === "KeyV") currentControlState.noclip = !currentControlState.noclip;
         if (e.code === "KeyP") {
             currentControlState.perspective = !currentControlState.perspective;
+            render.canvas.style.transform = '';
             canvas.style.transform = '';
             labelCanvas.style.transform = '';
         }
@@ -1265,6 +1306,8 @@ window.onresize = function() {
     posZ = floorFovFactor * canvas.height / screenRatio;
 
     uiContext.imageSmoothingEnabled = false;
+
+    render.setOutput([canvas.width, canvas.height]);
 }
 window.onresize();
 
@@ -1334,6 +1377,30 @@ function updateLoadingProgress() {
     }
 }
 
+let didUploadTexturesToKernel = false;
+let textureData = [];
+let textureDimentions = [];
+
+function uploadTexturesToKernel() {
+
+    for (let textureIndex = 0; textureIndex < textures.length; textureIndex++) {
+        let texture = textures[textureIndex];
+        for (let frameIndex = 0; frameIndex < texture.frames; frameIndex++) {
+            let frame = texture[frameIndex];
+            textureData.push(Array.from(frame.data));
+            textureDimentions.push(frame.width);
+            textureDimentions.push(frame.height);
+        }
+    }
+
+    textureData = textureData.flat();
+
+    console.log(textureData);
+    console.log(textureDimentions);
+
+    didUploadTexturesToKernel = true;
+}
+
 function renderLoop() {
     currentTime = performance.now();
     deltaTime = currentTime - lastTime;
@@ -1342,6 +1409,10 @@ function renderLoop() {
     frameStart = performance.now();
 
     if (gameState > 0) {
+        if (!didUploadTexturesToKernel) {
+            uploadTexturesToKernel();
+        }
+
         updatePlayerPosition(deltaTime);
 
         updateObjects();
@@ -1371,8 +1442,4 @@ requestAnimationFrame(renderLoop);
 Number.prototype.toFixedNumber = function(digits, base){
     let pow = Math.pow(base||10, digits);
     return Math.round(this*pow) / pow;
-}
-
-function getWorldCell(x, y) {
-    return world.cells[Math.trunc(y) * world.width + Math.trunc(x)];
 }

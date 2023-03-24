@@ -1,7 +1,7 @@
 // Canvas
 const canvas = document.getElementById('canvas');
 canvas.width = 400;
-const context = canvas.getContext('2d', { alpha: false });
+const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
 context.lineWidth = 1;
 
 const uiScaleFactor = 2;

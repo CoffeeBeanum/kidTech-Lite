@@ -79,7 +79,7 @@ const materials = {
 }
 
 const tempCanvas = document.getElementById("temp-canvas");
-const tempContext = tempCanvas.getContext("2d", { alpha: true });
+const tempContext = tempCanvas.getContext("2d", { alpha: true, willReadFrequently: true });
 
 function Texture(data, width, height, material) {
     this.data = data;
@@ -252,6 +252,30 @@ function loadViewModels() {
 function getTexture(index) {
     if (index > textures.length - 1) { index = 0; }
     return textures[index];
+}
+
+function getMegaTextureIndex(type, frameCounter) {
+    let index = 0;
+
+    for (let textureIndex = 0; textureIndex < type; textureIndex++) {
+        let texture = textures[textureIndex];
+        for (let frameIndex = 0; frameIndex < texture.frames; frameIndex++) {
+            let frame = texture[frameIndex];
+            index += (frame.width * frame.height) * 4;
+        }
+    }
+
+    let texture = textures[type];
+
+    let lastFrameIndex = 0;
+    if (texture.frames > 1) lastFrameIndex = ((frameCounter * texture.speed) >> 0) % texture.frames;
+
+    for (let frameIndex = 0; frameIndex < lastFrameIndex; frameIndex++) {
+        let frame = texture[frameIndex];
+        index += (frame.width * frame.height) * 4;
+    }
+
+    return index;
 }
 
 function getMinimapTexture(index) {
