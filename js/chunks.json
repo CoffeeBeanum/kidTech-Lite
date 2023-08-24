@@ -107,5 +107,215 @@
         ],
 
         "lights": []
+    },
+    
+    {
+        "name": "end02",
+
+        "allowRotation": true,
+        "allowMirror": true,
+
+        "contactNodes": [
+            {
+                "x": 1,
+                "y": 1,
+                "size": 1,
+                "side": 2
+            }
+        ],
+
+        "walls": [
+            [1,1],
+            [1,0],
+            [1,1]
+        ],
+        "floor": [
+            [0,0],
+            [0,4],
+            [0,0]
+        ],
+        "ceiling": [
+            [0,0],
+            [0,0],
+            [0,0]
+        ],
+
+        "decals": [],
+
+        "lights": []
+    },
+    
+    {
+        "name": "end03",
+
+        "allowRotation": true,
+        "allowMirror": true,
+
+        "contactNodes": [
+            {
+                "x": 0,
+                "y": 0,
+                "size": 1,
+                "side": 0
+            }
+        ],
+
+        "walls": [
+            [1]
+        ],
+        "floor": [
+            [0]
+        ],
+        "ceiling": [
+            [0]
+        ],
+
+        "decals": [],
+
+        "lights": []
+    },
+
+    {
+        "name": "corridor01",
+
+        "allowRotation": true,
+        "allowMirror": true,
+
+        "contactNodes": [
+            {
+                "x": 2,
+                "y": 1,
+                "size": 1,
+                "side": 2
+            },
+            {
+                "x": 0,
+                "y": 1,
+                "size": 1,
+                "side": 0
+            }
+        ],
+
+        "walls": [
+            [1,1,1],
+            [0,0,0],
+            [1,1,1]
+        ],
+        "floor": [
+            [0,0,0],
+            [4,4,4],
+            [0,0,0]
+        ],
+        "ceiling": [
+            [0,0,0],
+            [0,0,0],
+            [0,0,0]
+        ],
+
+        "decals": [],
+
+        "lights": []
+    },
+
+    {
+        "name": "corridor02",
+
+        "allowRotation": true,
+        "allowMirror": true,
+
+        "contactNodes": [
+            {
+                "x": 2,
+                "y": 1,
+                "size": 1,
+                "side": 2
+            },
+            {
+                "x": 0,
+                "y": 1,
+                "size": 1,
+                "side": 0
+            },
+            {
+                "x": 1,
+                "y": 0,
+                "size": 1,
+                "side": 1
+            }
+        ],
+
+        "walls": [
+            [1,0,1],
+            [0,0,0],
+            [1,1,1]
+        ],
+        "floor": [
+            [0,4,0],
+            [4,4,4],
+            [0,0,0]
+        ],
+        "ceiling": [
+            [0,0,0],
+            [0,0,0],
+            [0,0,0]
+        ],
+
+        "decals": [],
+
+        "lights": []
+    },
+
+    {
+        "name": "corridor03",
+
+        "allowRotation": true,
+        "allowMirror": true,
+
+        "contactNodes": [
+            {
+                "x": 2,
+                "y": 1,
+                "size": 1,
+                "side": 2
+            },
+            {
+                "x": 0,
+                "y": 1,
+                "size": 1,
+                "side": 0
+            },
+            {
+                "x": 1,
+                "y": 0,
+                "size": 1,
+                "side": 1
+            },
+            {
+                "x": 1,
+                "y": 2,
+                "size": 1,
+                "side": 3
+            }
+        ],
+
+        "walls": [
+            [1,0,1],
+            [0,0,0],
+            [1,0,1]
+        ],
+        "floor": [
+            [0,4,0],
+            [4,4,4],
+            [0,4,0]
+        ],
+        "ceiling": [
+            [0,0,0],
+            [0,0,0],
+            [0,0,0]
+        ],
+
+        "decals": [],
+
+        "lights": []
     }
 ]

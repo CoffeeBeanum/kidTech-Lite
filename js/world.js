@@ -3,6 +3,7 @@ Number.prototype.toFixedNumber = function(digits, base){
     return Math.round(this*pow) / pow;
 }
 
+let seed = 0;
 let presetWorld = {};
 
 // Common trigger functions
@@ -143,7 +144,7 @@ presetWorld = {
     'objects': [
         // Sprites
         {'name':'Doom guy','x':2.5,'y':15.5,'rotation':0,'type':0},
-        {'name':'Nazi dude','x':2.5,'y':14.5,'rotation':0,'type':1},
+        {'name':'Nazi scum','x':2.5,'y':14.5,'rotation':0,'type':1},
         {'name':'Orman Ablo','x':2.5,'y':13.5,'rotation':0,'type':2},
         {'name':'The Famous Shpee','x':2.5,'y':12.5,'rotation':0, 'type':3},
         {'name':'Engineer TF2','x':2.5,'y':11.5,'rotation':0,'type':6},
@@ -237,10 +238,15 @@ const getJSON = async url => {
 function shuffle(array) {
     let i = array.length;
     while (i--) {
-        const ri = Math.floor(Math.random() * i);
+        const ri = Math.floor(random() * i);
         [array[i], array[ri]] = [array[ri], array[i]];
     }
     return array;
+}
+
+function random() {
+    var x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
 }
 
 function rotateCW(array) {
@@ -288,8 +294,8 @@ function rotateChunk(chunk, targetSide, side) {
     }
 
     let angle = -90 * rotations;
-    let centerX = chunk.walls[0].length / 2 - 0.5;
-    let centerY = chunk.walls.length / 2 - 0.5;
+    let centerX = Math.floor(chunk.walls[0].length / 2);
+    let centerY = Math.floor(chunk.walls.length / 2);
 
     for (let nodeIndex = 0; nodeIndex < chunk.contactNodes.length; nodeIndex++) {
         let node = chunk.contactNodes[nodeIndex];
@@ -332,7 +338,9 @@ function rotateChunk(chunk, targetSide, side) {
     return chunk;
 }
 
-function generateWorld() {
+function generateWorld(initialSeed) {
+    seed = initialSeed;
+
     getJSON("js/chunks.json")
     .then(presetChunks => {
         let startWorldGen = performance.now();
@@ -343,6 +351,8 @@ function generateWorld() {
         initialChunk.x = 0;
         initialChunk.y = 0;
         chunks.push(initialChunk);
+
+        presetChunks.splice(0, 1);
 
         let generationDone = false;
 
@@ -356,8 +366,7 @@ function generateWorld() {
                     let node = chunk.contactNodes[nodeIndex];
 
                     if (node.connected == undefined) {
-                        // let shuffledChunks = shuffle(presetChunks);
-                        let shuffledChunks = [presetChunks[1]];
+                        let shuffledChunks = shuffle(presetChunks);
 
                         for (let newChunkIndex = 0; newChunkIndex < shuffledChunks.length; newChunkIndex++) {
                             let newChunk = JSON.parse(JSON.stringify(shuffledChunks[newChunkIndex]));
@@ -365,7 +374,33 @@ function generateWorld() {
                             for (let newNodeIndex = 0; newNodeIndex < newChunk.contactNodes.length; newNodeIndex++) {
                                 let newNode = newChunk.contactNodes[newNodeIndex];
 
-                                if (newNode.size == node.size) {
+                                if (addedChunk) {
+                                    // Check if new node overlaps any other chunks nodes
+                                    // for (let checkChunkIndex = 0; checkChunkIndex < chunks.length; checkChunkIndex++) {
+                                    //     let checkChunk = chunks[checkChunkIndex];
+
+                                    //     if (newChunk == checkChunk) {
+                                    //         break;
+                                    //     }
+
+                                    //     for (let checkNodeIndex = 0; checkNodeIndex < checkChunk.contactNodes.length; checkNodeIndex++) {
+                                    //         let checkNode = checkChunk.contactNodes[checkNodeIndex];
+
+                                    //         let checkX = checkChunk.x + checkNode.x;
+                                    //         let checkY = checkChunk.y + checkNode.y;
+
+                                    //         let newX = newChunk.x + newNode.x;
+                                    //         let newY = newChunk.y + newNode.y;
+
+                                    //         if (checkX == newX && checkY == newY) {
+                                    //             checkNode.connected = newChunk.name;
+                                    //             newNode.connected = checkChunk.name;
+
+                                    //             console.log(`Patched up node for ${checkChunk.name} and ${newChunk.name} at ${checkX}:${checkY}`);
+                                    //         }
+                                    //     }
+                                    // }
+                                } else if (newNode.size == node.size) {
 
                                     if (Math.abs(node.side - newNode.side) != 2) {
                                         console.log(`Pre-rotation: ${node.side}:${newNode.side}`);
@@ -374,13 +409,6 @@ function generateWorld() {
 
                                         console.log(`Post-rotation: ${node.side}:${newNode.side}`);
                                     }
-
-                                    node.connected = newChunk.name;
-                                    newNode.connected = chunk.name;
-
-                                    chunk.contactNodes[nodeIndex] = node;
-                                    chunks[chunkIndex] = chunk;
-                                    newChunk.contactNodes[newNodeIndex] = newNode;
 
                                     newChunk.x = chunk.x + node.x - newNode.x;
                                     newChunk.y = chunk.y + node.y - newNode.y;
@@ -393,14 +421,124 @@ function generateWorld() {
                                         default: break;
                                     }
 
-                                    console.log(newChunk);
+                                    let overlap = false;
 
-                                    chunks.push(newChunk);
+                                    // check if any of walls floor or ceiling of the new chunk overlap those of already existing chunks
+                                    for (let checkChunkIndex = 0; checkChunkIndex < chunks.length; checkChunkIndex++) {
+                                        let checkChunk = chunks[checkChunkIndex];
 
-                                    addedChunk = true;
+                                        if (newChunk == checkChunk) {
+                                            continue;
+                                        }
+
+                                        let checkWalls = checkChunk.walls;
+                                        let checkFloor = checkChunk.floor;
+                                        let checkCeiling = checkChunk.ceiling;
+
+                                        let newWalls = newChunk.walls;
+                                        let newFloor = newChunk.floor;
+                                        let newCeiling = newChunk.ceiling;
+
+                                        for (let checkY = 0; checkY < checkWalls.length; checkY++) {
+                                            for (let checkX = 0; checkX < checkWalls[0].length; checkX++) {
+                                                let checkTile = checkWalls[checkY][checkX];
+
+                                                if (checkTile != 0) {
+                                                    for (let newY = 0; newY < newWalls.length; newY++) {
+                                                        for (let newX = 0; newX < newWalls[0].length; newX++) {
+                                                            let newTile = newWalls[newY][newX];
+
+                                                            if (newTile != 0) {
+                                                                let checkTileX = checkX + checkChunk.x;
+                                                                let checkTileY = checkY + checkChunk.y;
+
+                                                                let newTileX = newX + newChunk.x;
+                                                                let newTileY = newY + newChunk.y;
+
+                                                                if (checkTileX == newTileX && checkTileY == newTileY) {
+                                                                    console.log(`Chunk ${newChunk.name} overlaps with ${checkChunk.name} at ${checkTileX}:${checkTileY}`);
+                                                                    overlap = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        for (let checkY = 0; checkY < checkFloor.length; checkY++) {
+                                            for (let checkX = 0; checkX < checkFloor[0].length; checkX++) {
+                                                let checkTile = checkFloor[checkY][checkX];
+                                                
+                                                if (checkTile != 0) {
+                                                    for (let newY = 0; newY < newFloor.length; newY++) {
+                                                        for (let newX = 0; newX < newFloor[0].length; newX++) {
+                                                            let newTile = newFloor[newY][newX];
+
+                                                            if (newTile != 0) {
+                                                                let checkTileX = checkX + checkChunk.x;
+                                                                let checkTileY = checkY + checkChunk.y;
+
+                                                                let newTileX = newX + newChunk.x;
+                                                                let newTileY = newY + newChunk.y;
+
+                                                                if (checkTileX == newTileX && checkTileY == newTileY) {
+                                                                    console.log(`Chunk ${newChunk.name} overlaps with ${checkChunk.name} at ${checkTileX}:${checkTileY}`);
+                                                                    overlap = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        for (let checkY = 0; checkY < checkCeiling.length; checkY++) {
+                                            for (let checkX = 0; checkX < checkCeiling[0].length; checkX++) {
+                                                let checkTile = checkCeiling[checkY][checkX];
+
+                                                if (checkTile != 0) {
+                                                    for (let newY = 0; newY < newCeiling.length; newY++) {
+                                                        for (let newX = 0; newX < newCeiling[0].length; newX++) {
+                                                            let newTile = newCeiling[newY][newX];
+
+                                                            if (newTile != 0) {
+                                                                let checkTileX = checkX + checkChunk.x;
+                                                                let checkTileY = checkY + checkChunk.y;
+
+                                                                let newTileX = newX + newChunk.x;
+                                                                let newTileY = newY + newChunk.y;
+
+                                                                if (checkTileX == newTileX && checkTileY == newTileY) {
+                                                                    console.log(`Chunk ${newChunk.name} overlaps with ${checkChunk.name} at ${checkTileX}:${checkTileY}`);
+                                                                    overlap = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (!overlap) {
+                                        node.connected = newChunk.name;
+                                        newNode.connected = chunk.name;
+    
+                                        chunk.contactNodes[nodeIndex] = node;
+                                        chunks[chunkIndex] = chunk;
+                                        newChunk.contactNodes[newNodeIndex] = newNode;
+
+                                        console.log(newChunk);
+                                        
+                                        chunks.push(newChunk);
+    
+                                        addedChunk = true;
+                                    }
                                 }
-
-                                if (addedChunk) break;
                             }
 
                             if (addedChunk) break;
@@ -418,6 +556,7 @@ function generateWorld() {
             }
         }
 
+        presetWorld.seed = initialSeed
         presetWorld.walls = [];
         presetWorld.floor = [];
         presetWorld.ceiling = [];
@@ -501,6 +640,7 @@ var world = {
 function initializeWorld() {
     let start = performance.now();
 
+    world.seed = presetWorld.seed;
     world.height = presetWorld.walls.length;
     world.width = presetWorld.walls[0].length;
 
@@ -741,8 +881,8 @@ function simulateLightPropagationFor(i) {
     }
 }
 
-// initializeWorld();
-generateWorld();
+initializeWorld();
+// generateWorld(Math.floor(Math.random() * 10000000));
 
 function faceToVertices(face) {
     switch (face) {

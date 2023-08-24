@@ -38,10 +38,10 @@ const drawDistance = 100;
 const maxHorizonSkew = 120;
 
 // Minimap settings
-const minimapOffset = 50;
-const minimapCellSize = 5;
+const minimapOffset = 20;
+const minimapCellSize = 4;
 const minimapObjectSize = 1.5;
-const minimapFovSize = 15;
+const minimapFovSize = 0;
 
 // Player settings
 const playerMaxSpeed = 0.3;

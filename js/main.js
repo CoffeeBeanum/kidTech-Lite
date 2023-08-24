@@ -31,7 +31,7 @@ let animationFrameCounter = performance.now();
 let debugMonitorCounter = 0;
 let debugMonitorTimeout = 100;
 
-let performanceProbe = 0;
+let debugProbe;
 
 let gameState = 0;
 
@@ -1123,7 +1123,7 @@ function updateObjects() {
                     'rotation': 0,
                     'type': 7,
                     'sprites': getSprite(7),
-                    'origin': 0,
+                    'origin': -1,
                     'scale': 1,
                     'animationOffset': animationFrameCounter,
                     'lifetime': 300
@@ -1274,7 +1274,8 @@ function updateDebugMonitor() {
     debugPerformanceLabel.innerHTML = `FPS: ${(1000/deltaTime).toFixed(2)}<br>
     Frametime: ${totalFrameTime.toFixed(1)}ms<br>
     Position: ${thisPlayer.x.toFixed(1)} ${thisPlayer.y.toFixed(1)}<br>
-    ${performanceProbe > 0 ? '<br>Probe: ' + performanceProbe + 'ms<br>' : ''}`;
+    Seed: ${world.seed}<br>
+    ${debugProbe != undefined ? '<br>Probe: ' + debugProbe + '<br>' : ''}`;
 
     debugStateLabel.innerHTML = `${currentControlState.perspective ? 'PERSPECTIVE FIX<br>' : ''}
     ${currentControlState.noclip ? 'NOCLIP<br>' : ''}`
